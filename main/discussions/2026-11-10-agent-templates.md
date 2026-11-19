@@ -166,3 +166,8 @@ Source of REQ-001. The owner's words are quoted; the rest is what was agreed.
 - "ok, all those templates are approved. Can we commit and push them in directives? Afterwards let's do cleanup of all
   the temp projects and then try to think how we can migrate sling-defender" — REQ-002, REQ-006 and REQ-007 approved;
   all seven request sets are now approved.
+
+## Project templates removed (2026-11-19)
+- "you are right, let's first remove templates that are now not needed when project can have multiple templates" —
+  after ctxm 0.7 (several templates per project, drafts, the own layer); REQ-007 superseded, `ctxm-dev` and
+  `godot-game-dev` removed from the library (b6308d4).
