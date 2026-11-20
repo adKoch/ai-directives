@@ -13,6 +13,9 @@ managed_states() {
   ctxm -C "$project" status --porcelain 2>&1
 }
 
+# Names the writers of porcelain status lines (fields 4 and on); "." is the project's own layer.
+writers_awk='function writers(   w, i) { w = ""; for (i = 4; i <= NF; i++) w = w (w == "" ? "" : ", ") ($i == "." ? "the project'"'"'s own" : $i); return w }'
+
 edited_path() {
   local input path
   input="$(cat)"
@@ -38,8 +41,9 @@ guard_edit() {
   case "$(printf '%s' "$line" | cut -f3)" in
     conflicted) exit 0 ;;
   esac
-  echo "ctxm guard: $path is managed by ctxm (template $(printf '%s' "$line" | cut -f4)) and read-only." \
-    "A change to it is a change to its template: describe it to main. See the ctxm skill." >&2
+  echo "ctxm guard: $path is managed by ctxm (written by $(printf '%s\n' "$line" | awk -F '\t' "$writers_awk { print writers() }"))" \
+    "and read-only. A change to a template's part goes to that template; a change to the project's own part goes into" \
+    "a draft. Describe it to main. See the ctxm skill." >&2
   exit 2
 }
 
@@ -52,7 +56,8 @@ report_changes() {
   elif [ "$rc" -ne 0 ]; then
     findings="ctxm status failed (exit $rc): $status"
   else
-    findings="$(printf '%s\n' "$status" | awk -F '\t' '$1 == "file" && ($3 == "modified" || $3 == "missing" || $3 == "unreadable") { print "  " $3 ": " $2 " (" $4 ")" }')"
+    findings="$(printf '%s\n' "$status" | awk -F '\t' "$writers_awk"'
+      $1 == "file" && ($3 == "modified" || $3 == "missing" || $3 == "unreadable") { print "  " $3 ": " $2 " (" writers() ")" }')"
   fi
   if [ -z "$findings" ]; then rm -f "$state_file"; exit 0; fi
   if [ -f "$state_file" ] && [ "$(cat "$state_file")" = "$findings" ]; then exit 0; fi

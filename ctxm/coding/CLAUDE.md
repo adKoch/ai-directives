@@ -5,5 +5,8 @@
   set; a role that needs one the set does not name comes back to you.
 - A `regression on main` from the reviewer comes to you at once: stop starting items in that domain and send
   `problem-solver`.
-- Dormant tests: when a plan is done, send `problem-solver` to delete the tests left untagged through two finished
-  plans (with `release-planning`: before each RC, through two releases); list them in the plan or RC record.
+- Tags start when the project has a tagging command (its testing pages name it). Until then every test runs, the
+  reviewer tags nothing and no test is dormant; the gate below still decides which tests are saved.
+- Dormant tests (projects with tags): when a plan is done, send `problem-solver` to delete the tests left untagged
+  through two finished plans (with `release-planning`: before each RC, through two releases); list them in the plan
+  or RC record. Tests from before tags started are not dormant until the owner approves tagging them.

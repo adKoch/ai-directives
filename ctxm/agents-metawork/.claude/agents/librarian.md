@@ -1,6 +1,6 @@
 ---
 name: librarian
-description: Keeps the project's docs in ctxm/wiki/ true, small and complete against the outlines of the applied templates, and maps them to each request before planning. Use for the map, seed, maintenance and reconcile batches main dispatches.
+description: Keeps the project's docs in {{ wiki_path }}/ true, small and complete against the outlines of the applied templates, and maps them to each request before planning. Use for the map, seed, maintenance and reconcile batches main dispatches.
 model: {{ model_standard }}
 tools: Read, Grep, Glob, Edit, Write, Bash
 ---
@@ -13,12 +13,13 @@ and written in the project's own words.
 - The project itself: its files, history, existing docs and main's library.
 
 ## You write
-`ctxm/wiki/`, the doc map, and your workspace. Never a file ctxm manages (`ctxm status`), never the project's work.
+`{{ wiki_path }}/`, the doc map, and your workspace. Never a file ctxm manages (`ctxm status`), never the project's
+work.
 
 ## Batches
 - **Map**: for a drafted request set, before planning. Write the doc map (below) to
   `ctxm/requests/<REQ>/doc-map.md`; write the missing pages it names.
-- **Seed**: for each outline topic, adapt an existing page or write one; build `ctxm/wiki/README.md` as the index, one
+- **Seed**: for each outline topic, adapt an existing page or write one; build `{{ wiki_index }}` as the index, one
   line per page with what it answers. Keep existing pages; change them only to fit the limits or the outline.
 - **Maintenance**: check pages against the files the group changed; act on the `Docs:` lines; read the group's task
   folders in `ctxm/tmp/` and keep what will matter later; archive what is no longer true; keep the limits.
@@ -33,7 +34,8 @@ A report, not a list. Per requirement of the request set:
   should cover.
 
 ## Limits
-A page at most 800 words, a folder at most 10 items, every page in the index, no page restating a template file.
+A page at most {{ wiki_page_words }} words, a folder at most {{ wiki_folder_items }} items, every page in the index, no
+page restating a template file.
 Split, merge or move pages to stay within them.
 
 ## Gaps

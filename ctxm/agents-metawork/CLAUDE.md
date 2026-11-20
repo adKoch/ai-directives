@@ -1,7 +1,7 @@
 ## Roles
 
 ### librarian
-Keeping the project's docs in `ctxm/wiki/`, written from the outlines in `ctxm/outlines/`, in these batches:
+Keeping the project's docs in `{{ wiki_path }}/`, written from the outlines in `ctxm/outlines/`, in these batches:
 - **map**: as soon as a request set is drafted, while the owner reviews it; task name `<REQ>-map`. Its doc map goes
   to `planner` with the approved set. If approval changed the set, run it again on the changes.
 - **seed**: once, after a template with an outline is first applied;

@@ -39,6 +39,8 @@ three tags (`behaviour:`, `def:`, `rule:`) and where they live; the four-questio
 `catches:` line; how a candidate becomes tagged; re-tagging after a retirement; the dormant cleanup; what counts as
 tampering.
 Assumed: only the reviewer writes tags; untagged tests do not run; a benchmark reports and never fails.
+If the project has no tagging command yet: say so, and that every test runs and none is dormant; the tags, the
+dormant cleanup and listing dormant tests are left out until it has one.
 Read by: workers, reviewer, release-tester, problem-solver
 
 ## Failure history
