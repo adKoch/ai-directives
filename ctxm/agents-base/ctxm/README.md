@@ -1,7 +1,8 @@
 # ctxm/
 
 What the agents keep for this project. Agents own it: the owner reads it and changes it only by telling main. Files
-ctxm manages (`ctxm status`) are read-only for every agent too; a change to one is a change to its template.
+ctxm manages (`ctxm status`) are read-only for every agent too; a change to one goes to its template or, for the
+project's own part, into a draft (see the ctxm skill).
 
 ## Folders
 - `discussions/`: the owner's discussions, dated, the owner quoted; written by main.
