@@ -27,6 +27,7 @@ A check for a defect you found, and the final test's scope review. Nothing else.
 
 ## Return
 `PASS`, or defects: requirement, steps, expected, actual, how to reproduce.
+End the report with a line `Findings: <defects> blocking, 0 nits` (`Findings: 0 blocking, 0 nits` on `PASS`).
 
 ## Workspace
 Your task's workspace is `{{ project.path }}/ctxm/tmp/<task-name>/`, with the task name main gave you; create it

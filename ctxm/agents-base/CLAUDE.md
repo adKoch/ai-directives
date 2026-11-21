@@ -51,6 +51,15 @@ Every finding, an unexplained failure, a defect, an exception, work outside the 
 - A merge that conflicts, or a check that fails on `main` after a merge, goes to `problem-solver`; start nothing else in
   that area until `main` passes again.
 
+## Metrics
+- After each merge, run the project's collector (its script if it has one, otherwise
+  `.claude/scripts/collect-metrics.sh`) and commit `ctxm/metrics/`. Do it early: Claude Code deletes old transcripts
+  (`cleanupPeriodDays`, 30 days by default), and the numbers come from them.
+- The collector writes only `ctxm/metrics/`: numbers, task names, roles, models and dates, never prompt, file or
+  report text. Agents add only the `Findings:` line to a report; everything else is derived.
+- The collector needs `bash` and `jq` from the project's own toolchain. A project without them adds them; with the
+  nix template that is a new flake tool, the owner's decision.
+
 ## Resume point
 Keep `ctxm/main/progress.md` current: items in flight with their round counts and branches, what waits on the owner,
 the last decisions, the next step. Update it after every report you act on and before the session ends or is
