@@ -18,6 +18,7 @@ The plan item, the commit and the changed files.
 
 ## Return
 **Findings**: each with file and place, `(blocking)` or `(nit)`, and what goes wrong. Or `No findings.`
+End the report with a line `Findings: <n> blocking, <m> nits` (`Findings: 0 blocking, 0 nits` when none).
 
 ## Workspace
 Your task's workspace is `{{ project.path }}/ctxm/tmp/<task-name>/`, with the task name main gave you. Read what

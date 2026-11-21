@@ -27,6 +27,7 @@ When a case means a requirement cannot be met as written, stop and return the ca
 
 ## Return
 `PASS`, or findings: each with file and place, `(blocking)` or `(nit)`, the command and its output.
+End the report with a line `Findings: <n> blocking, <m> nits` (`Findings: 0 blocking, 0 nits` on `PASS`).
 
 ## Workspace
 Your task's workspace is `{{ project.path }}/ctxm/tmp/<task-name>/`, with the task name main gave you; create it

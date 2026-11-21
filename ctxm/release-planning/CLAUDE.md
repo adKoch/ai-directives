@@ -9,12 +9,14 @@ A milestone test after a milestone's items are merged, and the final test once t
   caselists and the commit, never the submissions or findings. Defects go to `problem-solver` as fix items, retested
   at the next milestone test or the final test.
 - **Final test:** when the release scope is merged, send `release-tester` with every requirement of the release.
-- **RC:** after the final test passes and the librarian's maintenance batch has run, tag `v<x.y.z>-rc.<n>` and write
+- **RC:** after the final test passes and the librarian's maintenance batch has run, run the collector (see Metrics)
+  and commit `ctxm/metrics/`, then tag `v<x.y.z>-rc.<n>` and write
   `ctxm/releases/v<x.y.z>-rc.<n>.md`:
   - what changed, in the owner's terms, before and after;
   - an acceptance checklist: what to check, how, the expected result;
   - the important decisions and trade-offs, with their sources;
-  - results: the checks, the final test, the numbers the project tracks.
+  - results: the checks, the final test, the numbers the project tracks, taken from the release's roll-up
+    `ctxm/metrics/v<x.y>.md`.
 - Owner checks (play sessions, owner-judged requirements) happen at RC acceptance, unless the plan puts one earlier.
 - The owner approves: tag `v<x.y.z>`. The owner asks for changes: fix items, then the next RC.
 - A patch release (fixes from the owner's own use) is a small request set with one milestone and the same steps.

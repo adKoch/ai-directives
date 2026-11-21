@@ -11,4 +11,6 @@ project's own part, into a draft (see the ctxm skill).
 - `planner-guide.md`: how the planner builds a plan; from a template.
 - `tmp/<task-name>/`: one workspace per task, ignored by git; written only by the agents on that task.
 - `main/progress.md`: main's resume point; written by main.
+- `metrics/`: `tasks.csv` (one line per agent run) and one roll-up per plan; written only by the collector, which
+  main runs and commits.
 - `proposals/`: work proposed outside an item, waiting to be placed; written by main.
