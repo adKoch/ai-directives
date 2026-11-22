@@ -1,0 +1,33 @@
+{
+  "about": "A main session compacted twice and a run compacted once. Each `compact_boundary` stands between API calls, and the calls before it stay in the file. Once per call the session uses 10, 100, 1000 and 10000 tokens (4 before its last compaction), the run 3, 30, 300 and 3000 (1 before its compaction).",
+  "sessions": [
+    {
+      "id": "bbbbbbbb-0000-4000-8000-000000000001",
+      "model": "claude-synthetic-large",
+      "events": [
+        {"minute": 0, "prompt": "synthetic-text the owner asks for a long piece of work"},
+        {"minute": 1, "call": "msg_synthetic_long_01", "records": 2, "usage": {"input_tokens": 1, "output_tokens": 10, "cache_creation_input_tokens": 100, "cache_read_input_tokens": 1000}},
+        {"minute": 20, "call": "msg_synthetic_long_02", "usage": {"input_tokens": 2, "output_tokens": 20, "cache_creation_input_tokens": 200, "cache_read_input_tokens": 2000}},
+        {"minute": 21, "compaction": {"trigger": "auto", "preTokens": 150000}},
+        {"minute": 22, "call": "msg_synthetic_long_03", "usage": {"input_tokens": 1, "output_tokens": 10, "cache_creation_input_tokens": 100, "cache_read_input_tokens": 1000}},
+        {"minute": 40, "compaction": {"trigger": "manual", "preTokens": 90000}},
+        {"minute": 41, "call": "msg_synthetic_long_04", "records": 2, "usage": {"input_tokens": 6, "output_tokens": 60, "cache_creation_input_tokens": 600, "cache_read_input_tokens": 6000}}
+      ],
+      "runs": [
+        {
+          "agent": "b0000000000000001",
+          "role": "foundation-worker",
+          "model": "claude-synthetic-large",
+          "description": "synthetic-text what the run is for",
+          "finished": 39,
+          "events": [
+            {"minute": 3, "prompt": "Task: `REQ-900-2A-long-example` synthetic-text the plan item"},
+            {"minute": 4, "call": "msg_synthetic_worker_01", "records": 2, "usage": {"input_tokens": 1, "output_tokens": 10, "cache_creation_input_tokens": 100, "cache_read_input_tokens": 1000}},
+            {"minute": 30, "compaction": {"trigger": "auto", "preTokens": 160000}},
+            {"minute": 31, "call": "msg_synthetic_worker_02", "usage": {"input_tokens": 2, "output_tokens": 20, "cache_creation_input_tokens": 200, "cache_read_input_tokens": 2000}}
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "about": "A main session sends one inspector run, and the run finishes. The task name is in the run's first prompt. Most API calls span several records under one message id; where a call gives the output counted so far, only its last record holds the whole output. Once per call the run uses 60 input, 600 output, 6000 cache-write and 60000 cache-read tokens, the session 12, 120, 1200 and 12000.",
+  "sessions": [
+    {
+      "id": "aaaaaaaa-0000-4000-8000-000000000001",
+      "model": "claude-synthetic-large",
+      "events": [
+        {"minute": 0, "prompt": "synthetic-text the owner asks for a change"},
+        {"minute": 1, "call": "msg_synthetic_main_01", "records": 2, "earlier_records_output_tokens": 2, "usage": {"input_tokens": 5, "output_tokens": 50, "cache_creation_input_tokens": 500, "cache_read_input_tokens": 5000}},
+        {"minute": 14, "call": "msg_synthetic_main_02", "usage": {"input_tokens": 7, "output_tokens": 70, "cache_creation_input_tokens": 700, "cache_read_input_tokens": 7000}}
+      ],
+      "runs": [
+        {
+          "agent": "a0000000000000001",
+          "role": "inspector",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text what the run is for",
+          "finished": 12,
+          "events": [
+            {"minute": 2, "prompt": "Task: `REQ-900-1A-first-example` synthetic-text the plan item and the commit"},
+            {"minute": 3, "call": "msg_synthetic_run_01", "records": 3, "earlier_records_output_tokens": 1, "usage": {"input_tokens": 10, "output_tokens": 100, "cache_creation_input_tokens": 1000, "cache_read_input_tokens": 10000}},
+            {"minute": 6, "call": "msg_synthetic_run_02", "records": 2, "usage": {"input_tokens": 20, "output_tokens": 200, "cache_creation_input_tokens": 2000, "cache_read_input_tokens": 20000}},
+            {"minute": 11, "call": "msg_synthetic_run_03", "usage": {"input_tokens": 30, "output_tokens": 300, "cache_creation_input_tokens": 3000, "cache_read_input_tokens": 30000}}
+          ]
+        }
+      ]
+    }
+  ]
+}

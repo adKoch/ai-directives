@@ -1,0 +1,60 @@
+{
+  "about": "Three session files that share history. The first session makes two calls, is compacted and has a finished run. The second is forked from it at minute 30: its file starts with a copy of the first one's records, and its folder holds a copy of the run under the same agent id; then it adds a call and a run of its own. The third is resumed from the second at minute 60 and copies all of that again. The first session goes on after the fork (minute 35), which no copy holds. Counted once, there are 5 session calls (1, 2, 4, 8, 16 input tokens: 31; the other kinds ten, a hundred and a thousand times that), 1 compaction and 2 runs of 3, 30, 300 and 3000 tokens each.",
+  "sessions": [
+    {
+      "id": "dddddddd-0000-4000-8000-000000000001",
+      "model": "claude-synthetic-large",
+      "events": [
+        {"minute": 0, "prompt": "synthetic-text the owner starts the work"},
+        {"minute": 1, "call": "msg_synthetic_first_01", "records": 2, "usage": {"input_tokens": 1, "output_tokens": 10, "cache_creation_input_tokens": 100, "cache_read_input_tokens": 1000}},
+        {"minute": 15, "compaction": {"trigger": "auto", "preTokens": 140000}},
+        {"minute": 16, "call": "msg_synthetic_first_02", "usage": {"input_tokens": 2, "output_tokens": 20, "cache_creation_input_tokens": 200, "cache_read_input_tokens": 2000}},
+        {"minute": 35, "call": "msg_synthetic_first_03", "usage": {"input_tokens": 4, "output_tokens": 40, "cache_creation_input_tokens": 400, "cache_read_input_tokens": 4000}}
+      ],
+      "runs": [
+        {
+          "agent": "d0000000000000001",
+          "role": "standard-worker",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text what the run is for",
+          "finished": 12,
+          "events": [
+            {"minute": 2, "prompt": "Task: `REQ-900-4A-before-the-fork` synthetic-text the plan item"},
+            {"minute": 3, "call": "msg_synthetic_before_01", "records": 3, "usage": {"input_tokens": 3, "output_tokens": 30, "cache_creation_input_tokens": 300, "cache_read_input_tokens": 3000}}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dddddddd-0000-4000-8000-000000000002",
+      "copies": "dddddddd-0000-4000-8000-000000000001",
+      "model": "claude-synthetic-large",
+      "events": [
+        {"minute": 30, "prompt": "synthetic-text the owner goes another way"},
+        {"minute": 31, "call": "msg_synthetic_second_01", "records": 2, "usage": {"input_tokens": 8, "output_tokens": 80, "cache_creation_input_tokens": 800, "cache_read_input_tokens": 8000}}
+      ],
+      "runs": [
+        {
+          "agent": "d0000000000000002",
+          "role": "inspector",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text what the run is for",
+          "finished": 45,
+          "events": [
+            {"minute": 32, "prompt": "Task: `REQ-900-4B-after-the-fork` synthetic-text the commit to read"},
+            {"minute": 33, "call": "msg_synthetic_after_01", "usage": {"input_tokens": 3, "output_tokens": 30, "cache_creation_input_tokens": 300, "cache_read_input_tokens": 3000}}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dddddddd-0000-4000-8000-000000000003",
+      "copies": "dddddddd-0000-4000-8000-000000000002",
+      "model": "claude-synthetic-large",
+      "events": [
+        {"minute": 60, "prompt": "synthetic-text the owner comes back"},
+        {"minute": 61, "call": "msg_synthetic_third_01", "usage": {"input_tokens": 16, "output_tokens": 160, "cache_creation_input_tokens": 1600, "cache_read_input_tokens": 16000}}
+      ]
+    }
+  ]
+}

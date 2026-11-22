@@ -1,0 +1,15 @@
+{
+  "about": "A top-level session whose file opens with a title record and an agent-name record, before the first prompt. Both hold free text and neither has a uuid or a time.",
+  "sessions": [
+    {
+      "id": "eeeeeeee-0000-4000-8000-000000000001",
+      "model": "claude-synthetic-large",
+      "title": "synthetic-text the title the session was given",
+      "agent_name": "synthetic-text the name the session was given",
+      "events": [
+        {"minute": 0, "prompt": "synthetic-text the owner asks a question"},
+        {"minute": 1, "call": "msg_synthetic_titled_01", "records": 2, "usage": {"input_tokens": 9, "output_tokens": 90, "cache_creation_input_tokens": 900, "cache_read_input_tokens": 9000}}
+      ]
+    }
+  ]
+}
