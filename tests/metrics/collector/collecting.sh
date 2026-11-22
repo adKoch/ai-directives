@@ -17,6 +17,9 @@ readonly EPOCH=2026-01-05T09:00:00Z
 # shellcheck disable=SC2034 # read by the test files
 readonly METRICS=project/ctxm/metrics
 readonly TEXT_MARK=synthetic-text
+# The collector runs as main runs it, but in an empty environment with a home of its own: nothing of the caller's
+# (a GIT_DIR, a HOME with real transcripts) reaches it. Found here, so a test may narrow the PATH.
+readonly EMPTY_ENVIRONMENT=("$(command -v env)" -i)
 
 # Prints the file of a shape or a history: one of this folder's own, or one of the fixtures.
 scenario_file() {
@@ -56,11 +59,12 @@ transcripts() {
     "${TRANSCRIPTS_EPOCH:-$EPOCH}" "$@"
 }
 
-# Runs the collector with the arguments. Leaves ./stdout, ./stderr and the exit status in ./status; a test
-# asserts the status, so a refusal is never taken for a collection.
+# Runs the collector with the arguments, the PATH and an empty home. Leaves ./stdout, ./stderr and the exit status
+# in ./status; a test asserts the status, so a refusal is never taken for a collection.
 run_collector() {
   local status=0
-  "$COLLECTOR" "$@" >stdout 2>stderr || status=$?
+  mkdir -p home
+  "${EMPTY_ENVIRONMENT[@]}" PATH="$PATH" HOME="$PWD/home" "$COLLECTOR" "$@" >stdout 2>stderr || status=$?
   printf '%s\n' "$status" >status
 }
 

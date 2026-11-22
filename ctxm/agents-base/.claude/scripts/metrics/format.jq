@@ -21,7 +21,7 @@ def is_fixed_word: . == nothing or . == unknown or . == main_role;
 # A main session is closed when none of its records is younger than this.
 def quiet_seconds: 3600;
 
-# A longer line of a transcript is not read.
+# A longer line of a transcript is no record: the transcript is left out (jq reads the line whole first).
 def line_limit_bytes: 8388608;
 
 # Whether the whole value fits the pattern. `$` would also accept a line break at the end, so the end is `\\z`.
@@ -58,7 +58,15 @@ def refuse($why): error({refusal: $why});
 # The one place a line is written. A field holds only letters, digits and the marks the lists use, and starts with
 # a letter or a digit: it can never hold a separator, a quote or a line break, nor start a spreadsheet formula.
 def is_field: matches("[A-Za-z0-9][A-Za-z0-9._:@=/+\\[\\]-]*");
-def field_text: tostring | if is_field then . else error("a value that is no field of tasks.csv reached a line") end;
+# A number is written as its digits: jq keeps a number it read as it was written there (1E2, 10.0), and arithmetic
+# gives the plain form.
+def number_text:
+  . + 0 | tostring
+  | if matches("[0-9]{1,16}") then . else error("a number that is no count of tasks.csv reached a line") end;
+def field_text:
+  if type == "number" then number_text
+  else tostring | if is_field then . else error("a value that is no field of tasks.csv reached a line") end
+  end;
 def csv_line: . as $line | [columns[] | $line[.] | field_text] | join(",");
 
 def by_column: [columns, .] | transpose | map({key: .[0], value: .[1]}) | from_entries;

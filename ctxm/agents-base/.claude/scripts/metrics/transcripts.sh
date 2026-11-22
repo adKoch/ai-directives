@@ -29,6 +29,7 @@ session_facts() (
   local folder=$1 transcript
   shopt -s nullglob
   for transcript in "$folder"/*.jsonl; do
+    [[ -f "$transcript" ]] || { unreadable_fact session; continue; }
     metrics_jq "format facts" 'transcript_facts + {kind: "session"}' \
       --null-input --raw-input --compact-output "$transcript"
   done
@@ -42,9 +43,15 @@ run_facts() (
   for transcript in "$folder"/*/subagents/agent-*.jsonl; do
     agent="${transcript##*/agent-}"
     agent="${agent%.jsonl}"
-    [[ "$written" == *" $agent "* ]] || one_run_facts "$transcript" "$agent"
+    [[ -f "$transcript" ]] || { unreadable_fact run; continue; }
+    [[ -n "$agent" && "$written" == *" $agent "* ]] || one_run_facts "$transcript" "$agent"
   done
 )
+
+# Prints the fact of a transcript that is no plain file (a folder, a pipe that would never end): not read, counted.
+unreadable_fact() {
+  printf '{"kind":"%s","unreadable":1}\n' "$1"
+}
 
 # Prints the facts of one run: its transcript's, and what its `.meta.json` says. A run whose file name holds no
 # agent id is unreadable, and its name is not kept.

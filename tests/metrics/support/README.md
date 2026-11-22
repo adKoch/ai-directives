@@ -32,6 +32,7 @@ makers by hand, with a folder in the task's workspace.
 | `sessions[].id`, `.model` | the session's id (its file is `<id>.jsonl`) and the model of its calls |
 | `sessions[].title`, `.agent_name` | optional: the file opens with a title record, an agent-name record |
 | `sessions[].copies` | optional, a session id: the session is resumed or forked from that one. Its file starts with what the other had written when this one's first event happens, and its folder holds the other's runs as they stood then |
+| `sessions[].renames_copies` | optional, `true`: the copy of the other session's own records names this session (`sessionId`), as Claude Code writes some copies; the copied runs are unchanged |
 | `sessions[].events[]`, `runs[].events[]` | in time order, each with its `minute` and one of the kinds below; at most 999999 per session or run |
 | `{"prompt": <text>}` | one user record. A run's first prompt carries the task name |
 | `{"call": <message id>, "usage": {…}, "records": <n>, "earlier_records_output_tokens": <n>}` | one API call, written as `records` assistant records (default 1, at most 100) under one message id. Each holds `usage`; with the last key, the records before the last hold that number as their output |
@@ -90,5 +91,6 @@ them, by key names only.
 | Agent file | front matter `name`, `description`, `model`, `effort` | read from a project's agent file |
 
 Not checked, and written here as a choice: the value of `finished` (`true`; the plan says only that a running run
-has none); that the records of a call before its last hold a smaller `output_tokens`; that a copied record keeps
-the `sessionId` of the session that wrote it; that a copied run is as it stood at the fork.
+has none); that the records of a call before its last hold a smaller `output_tokens`; that a copied run is as it
+stood at the fork. A copied record keeps the `sessionId` of the session that wrote it unless the shape says
+`renames_copies` (the collector's probe saw both on real transcripts).

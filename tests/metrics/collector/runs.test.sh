@@ -54,6 +54,16 @@ test_a_run_whose_prompt_names_no_task_is_counted_and_not_written() {
 note: finished runs whose first prompt names no task after Task:, not written: 1' cat stderr
 }
 
+# catches: a task name taken from a later `Task:` when the first one names none: a run written under a task
+# the prompt only mentions.
+test_a_run_whose_first_task_names_none_is_not_written_under_a_later_one() {
+  started_project one-setup
+  transcripts task-name-after-the-first-task
+  collected
+  assert_prints 'ctxm/metrics/tasks.csv: lines added: 0 (of runs: 0, of main sessions: 0)' cat stdout
+  assert_prints 'note: finished runs whose first prompt names no task after Task:, not written: 1' cat stderr
+}
+
 # catches: usage from before a compaction dropped, or a compaction not counted.
 test_a_compacted_run_keeps_its_earlier_usage_and_counts_its_compactions() {
   started_project one-setup

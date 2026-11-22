@@ -47,6 +47,23 @@ test_a_forked_and_a_resumed_session_repeat_the_records_and_runs_they_copy() {
     "forked-session/$FIRST_SESSION/$copied_run.meta.json"
 }
 
+# catches: a copy meant to name the copying session that keeps the earlier session's id, or a new uuid: the
+# collector's tests of such a copy would pass without one.
+test_a_copy_that_renames_names_the_copying_session_and_keeps_the_uuids() {
+  jq --null-input '{sessions: [
+    {id: "eeeeeeee-0000-4000-8000-000000000002", model: "m", events: [{minute: 0, prompt: "synthetic-text a"}]},
+    {id: "eeeeeeee-0000-4000-8000-000000000001", model: "m", copies: "eeeeeeee-0000-4000-8000-000000000002",
+      renames_copies: true, events: [{minute: 5, prompt: "synthetic-text b"}]}
+  ]}' >renaming.json
+  "$SUPPORT/make-transcripts.sh" "$PWD/renaming.json" "$PWD/renaming" "$EPOCH"
+  assert_prints '["eeeeeeee-0000-4000-8000-000000000001"]' \
+    jq -s -c 'map(.sessionId) | unique' renaming/eeeeeeee-0000-4000-8000-000000000001.jsonl
+  assert_prints '"00000000-0000-4000-8000-000000000000"' \
+    jq -s -c '.[0].uuid' renaming/eeeeeeee-0000-4000-8000-000000000002.jsonl
+  assert_prints '"00000000-0000-4000-8000-000000000000"' \
+    jq -s -c '.[0].uuid' renaming/eeeeeeee-0000-4000-8000-000000000001.jsonl
+}
+
 # Prints the output tokens each record of the call holds, in the order of the file.
 outputs_of_call() {
   local call=$1 transcript=$2

@@ -93,4 +93,14 @@ test_a_start_record_with_a_payload_or_a_time_to_come_is_refused() {
   done
 }
 
+# catches: a dry run that starts the metrics, or makes ctxm/metrics/ on the way.
+test_a_dry_run_at_the_first_collection_creates_nothing() {
+  project one-setup
+  transcripts finished-run
+  collect_with --dry-run
+  assert_prints 0 cat status
+  assert_prints 'ctxm/metrics/start: the metrics of the project would start now; dry run, nothing written' cat stdout
+  assert_prints '' written_files
+}
+
 run_tests

@@ -55,8 +55,12 @@ def role_setup:
       effort: ($text | front_value("effort") | plain(is_effort; "an effort"))
     };
 
+# An agent file opens with front matter, as Claude Code's subagents do; another file there (a README.md) is no role.
+# A name git had to quote (an empty role) stays, so that it is refused.
+def is_agent_file: .role == "" or (.text | split("\n") | .[0] == "---");
+
 def fingerprint($lock; $agents):
-  ($agents | map(role_setup)) as $roles
+  ($agents | map(select(is_agent_file) | role_setup)) as $roles
   | {
       templates: ($lock | applied_templates),
       roles: ($roles | map("\(.role)=\(.model)/\(.effort)") | listed),

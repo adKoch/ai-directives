@@ -13,7 +13,8 @@ def field($key): if type == "object" then .[$key] else null end;
 
 def is_timestamp: matches("[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?Z");
 def seconds: sub("\\.[0-9]+Z$"; "Z") | (try fromdateiso8601 catch null);
-def is_count: type == "number" and . >= 0 and . == floor;
+# A count jq holds exactly: a whole number from 0 to 2^53 - 1.
+def is_count: type == "number" and . >= 0 and . == floor and . <= 9007199254740991;
 def is_call_id: matches("[A-Za-z0-9_-]{1,128}");
 def is_record_id: matches("[0-9a-f-]{1,64}");
 
@@ -27,7 +28,7 @@ def prompt_text:
 # The task name main gave the run: what stands in backticks after the first `Task:` of the prompt, when it is a
 # task name. Anything else there gives null, and nothing of it is kept.
 def named_task:
-  (prompt_text | [match("Task: `([^`\\n]{1,200})`").captures[0].string] | first) as $name
+  (prompt_text | split("Task:") | .[1] // "" | [match("\\A `([^`\\n]{1,200})`").captures[0].string] | first) as $name
   | if ($name | is_task_name) then $name else null end;
 
 def usage_of($usage): {

@@ -66,6 +66,17 @@ test_a_role_or_a_model_that_is_no_plain_word_keeps_the_run_out() {
   assert_no_text_got_out
 }
 
+# catches: a count written as jq read it (1E+2, 10.0) or beyond what jq holds exactly (1E+30): the roll-ups would
+# read a field that is no whole number.
+test_a_count_in_another_form_is_written_as_digits_and_one_too_large_keeps_the_run_out() {
+  started_project one-setup
+  transcripts unplain-counts
+  collected
+  assert_prints '100,10' line_fields 80000000000000001 input_tokens output_tokens
+  assert_prints '' line_fields 80000000000000002 input_tokens
+  assert_prints 'note: transcripts that cannot be read whole, not written: 1' cat stderr
+}
+
 # Adds a line to a run's transcript: what a damaged or oversize record looks like to the collector.
 add_line() {
   printf '%s\n' "$2" >>"transcripts/cccccccc-0000-4000-8000-000000000001/subagents/agent-$1.jsonl"
@@ -79,11 +90,13 @@ oversize_record() {
 # catches: a transcript with a line the collector cannot read written with the sums of its other lines, or
 # stopping the whole collection for good: it is left out, counted, and the rest is written.
 test_a_run_with_a_malformed_a_truncated_or_an_oversize_line_is_counted_and_not_written() {
+  local oversize
+  oversize="$(oversize_record)"
   started_project one-setup
   transcripts unfinished-and-unnamed-runs
   add_line c0000000000000001 'synthetic-text is not JSON'
   add_line c0000000000000002 '{"type":"assistant","timestamp":"2026-01-05T09:21:00.000Z","message":{"id":"msg_synth'
-  add_line c0000000000000005 "$(oversize_record)"
+  add_line c0000000000000005 "$oversize"
   collected
   assert_prints 1 line_count
   assert_prints 'none,main' line_fields cccccccc-0000-4000-8000-000000000001 task role

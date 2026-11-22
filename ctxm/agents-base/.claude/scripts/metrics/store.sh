@@ -15,7 +15,7 @@ PREPARED_FILE=''
 # reads and writes.
 refuse_unsafe_store() {
   local place
-  for place in ctxm "$METRICS_FOLDER" "$START_FILE" "$TASKS_FILE" "$START_FILE.new" "$TASKS_FILE.new"; do
+  for place in ctxm "$METRICS_FOLDER" "$START_FILE" "$TASKS_FILE"; do
     [[ ! -L "$PROJECT/$place" ]] || refuse "$place is a symbolic link: the collector writes only the project's own" \
       "$METRICS_FOLDER/; remove the link; nothing was written"
   done
@@ -36,11 +36,12 @@ stored_start() {
   printf '%s\n' "$(<"$PROJECT/$START_FILE")"
 }
 
-# Replaces a file of ctxm/metrics/ with the content, whole or not at all.
+# Replaces a file of ctxm/metrics/ with the content, whole or not at all. The file is prepared under a name of
+# this collector's own, so a second collector at the same time can neither remove it nor rename it into place.
 store() {
   local file=$1 content=$2
   mkdir -p -- "$PROJECT/$METRICS_FOLDER"
-  PREPARED_FILE="$PROJECT/$file.new"
+  PREPARED_FILE="$PROJECT/$file.new.$$"
   rm -f -- "$PREPARED_FILE"
   write_new_file "$PREPARED_FILE" "$content"
   mv -f -- "$PREPARED_FILE" "$PROJECT/$file"

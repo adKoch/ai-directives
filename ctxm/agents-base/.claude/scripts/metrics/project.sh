@@ -19,14 +19,19 @@ find_project() {
   readonly PROJECT
 }
 
+# A user's setting that adds lines to the log (a signature) would be read as commits: it is turned off.
 project_git() {
-  git --no-pager -C "$PROJECT" "$@"
+  git --no-pager -c log.showSignature=false -C "$PROJECT" "$@"
 }
 
-# Drops the repository the caller's environment may name (inside a git hook it does): every git command here
-# reads the repository of the project folder and no other.
+# Drops every git variable of the caller's environment (inside a git hook there are several: GIT_DIR,
+# GIT_INDEX_FILE, an object folder, a namespace): every git command here reads the repository of the project folder
+# and no other.
 forget_inherited_repository() {
-  unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR
+  local name
+  for name in "${!GIT_@}"; do
+    unset "$name"
+  done
 }
 
 # Prints the project's name, its main checkout's folder name, or nothing when that is no plain name.
@@ -46,18 +51,24 @@ project_setups() {
   done < <(printf '%s\n' "$changes")
 }
 
-# Prints the setup at one commit, from the lock and the agent files as that commit holds them.
+# Prints the setup at one commit, from the lock and the agent files as that commit holds them. They reach jq on its
+# input, never as arguments: an argument has a size limit that a file does not.
 setup_at_commit() {
-  local commit=$1 since=$2 lock=null agent_files agents=()
+  local commit=$1 since=$2
+  # shellcheck disable=SC2016 # $commit and $since are jq's
+  setup_files_at "$commit" | metrics_jq "format setup" '
+    [inputs] as $files
+    | setup($commit; $since; $files | map(.lock // empty) | .[0]; $files | map(select(has("role"))))
+  ' --null-input --compact-output --arg commit "$commit" --argjson since "$since"
+}
+
+# Prints the lock of a commit as {lock: <text>}, if it has one, then each of its agent files as {role, text}.
+setup_files_at() {
+  local commit=$1
   if project_git cat-file -e "$commit:$LOCK_FILE" 2>/dev/null; then
-    lock="$(project_git show "$commit:$LOCK_FILE" | jq --raw-input --slurp .)"
+    project_git show "$commit:$LOCK_FILE" | jq --raw-input --slurp --compact-output '{lock: .}'
   fi
-  agent_files="$(agent_files_at "$commit")"
-  [[ -z "$agent_files" ]] || mapfile -t agents < <(printf '%s\n' "$agent_files")
-  # shellcheck disable=SC2016 # $commit, $since, $lock and $ARGS are jq's
-  metrics_jq "format setup" 'setup($commit; $since; $lock; $ARGS.positional | map(fromjson))' \
-    --null-input --compact-output --arg commit "$commit" --argjson since "$since" --argjson lock "$lock" \
-    --args "${agents[@]}"
+  agent_files_at "$commit"
 }
 
 # Prints each agent file of a commit as {role, text}, one JSON object per line. A name git has to quote is no

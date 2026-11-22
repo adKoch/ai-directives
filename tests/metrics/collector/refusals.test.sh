@@ -50,6 +50,8 @@ test_a_linked_metrics_folder_or_lines_file_is_refused_and_nothing_lands_behind_t
   ln -s "$PWD/outside/tasks.csv" "$METRICS/tasks.csv"
   collect
   assert_prints 1 cat status
+  assert_prints "error: ctxm/metrics/tasks.csv is a symbolic link: the collector writes only the project's own\
+ ctxm/metrics/; remove the link; nothing was written" cat stderr
   assert_prints '' ls outside
 }
 
@@ -103,6 +105,42 @@ test_an_interrupted_collection_leaves_the_lines_as_they_were() {
   assert_same_content "$METRICS/tasks.csv" before.csv
   assert_prints 'start
 tasks.csv' ls "$METRICS"
+}
+
+# catches: a step that fails with status 1 (a full disk, a read-only folder) ending the collector without its
+# error line, as if it were a refusal that had printed one.
+test_a_step_that_fails_ends_the_collector_with_one_error_line_and_nothing_written() {
+  started_project one-setup
+  transcripts finished-run
+  mkdir tools
+  ln -s "$COLLECTOR_TESTS/standins/failing-mv.sh" tools/mv
+  PATH="$PWD/tools:$PATH" collect
+  assert_prints 1 cat status
+  assert_prints 'mv: synthetic failure
+error: a step of the collection failed, see above; ctxm/metrics/ holds no half-written file' cat stderr
+  assert_prints start ls "$METRICS"
+}
+
+# catches: a collection that is done reported as failed, with a write error, when stdout is closed.
+test_a_collection_with_stdout_closed_is_done_quietly() {
+  local status=0
+  started_project one-setup
+  transcripts finished-run
+  "$COLLECTOR" --project "$PWD/project" --transcripts "$PWD/transcripts" >&- 2>stderr || status=$?
+  assert_equal "$status" 0
+  assert_prints '' cat stderr
+  assert_prints 2 line_count
+}
+
+# catches: a first collection that starts the metrics of a project no later collection can collect.
+test_a_first_collection_in_a_folder_whose_name_is_no_plain_name_is_refused() {
+  project one-setup
+  transcripts finished-run
+  mv project 'synthetic project'
+  run_collector --project "$PWD/synthetic project" --transcripts "$PWD/transcripts"
+  assert_prints 1 cat status
+  assert_prints "error: the project folder's name is no plain name, so no line can name the project" cat stderr
+  assert_prints '' git -C 'synthetic project' status --porcelain --untracked-files=all
 }
 
 # catches: a second set of metrics on a branch: a collection in a linked worktree would write its own

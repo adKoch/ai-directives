@@ -24,4 +24,27 @@ test_the_header_the_collector_writes_is_the_column_list_of_the_format_page() {
   assert_prints "$header" head -n 1 "$METRICS/tasks.csv"
 }
 
+# Fails when the mark of the shapes' free text stands in what the collector said.
+assert_no_text_got_out_of_the_output() {
+  [[ "$(<stdout)$(<stderr)" != *synthetic-text* ]] || fail "text of tasks.csv stands in what the collector said"
+}
+
+# catches: lines added to a tasks.csv the collector cannot read (another header, a line that is none of the
+# format, a payload in it), which would mix two formats or repeat the payload; or the payload printed.
+test_a_lines_file_it_cannot_read_is_refused_and_left_byte_for_byte() {
+  local header content
+  started_project one-setup
+  transcripts finished-run
+  header="$(names_under Columns)"
+  for content in $'task,role\nREQ-900-1A-x,inspector' "$header"$'\nREQ-900-1A-x,inspector' \
+    "$header"$'\n=synthetic-text,"x"'; do
+    printf '%s\n' "$content" >"$METRICS/tasks.csv"
+    cp "$METRICS/tasks.csv" before.csv
+    collect
+    assert_prints 1 cat status
+    assert_same_content "$METRICS/tasks.csv" before.csv
+    assert_no_text_got_out_of_the_output
+  done
+}
+
 run_tests

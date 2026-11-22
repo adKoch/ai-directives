@@ -33,7 +33,7 @@ takes them with the settings `{project, now, start, written}` and gives `{added,
 |---|---|
 | `project <history>`, `started_project <history> [<start>]` | builds `./project` from a history (this folder's `histories/`, else the fixtures'); the second with `ctxm/metrics/start` as a first collection left it |
 | `transcripts <shape> [<minute>]` | builds `./transcripts` from a shape (this folder's `shapes/`, else the fixtures'); `TRANSCRIPTS_EPOCH` moves its minute 0, `minutes_ago <n>` gives a time relative to now |
-| `collect`, `collect_with <options>`, `run_collector <arguments>`, `collected` | run the collector as a program; `./stdout`, `./stderr`, `./status`; `collected` fails unless the status is 0 |
+| `collect`, `collect_with <options>`, `run_collector <arguments>`, `collected` | run the collector as a program, in an empty environment but the `PATH` and a home of the test's own; `./stdout`, `./stderr`, `./status`; `collected` fails unless the status is 0 |
 | `line_fields <agent or session id> <columns>` , `line_count` | read `tasks.csv` by column name |
 | `assert_no_text_got_out` | fails when the mark of the shapes' free text stands in `ctxm/metrics/`, `./stdout` or `./stderr` |
 | `written_files` | the project's files git does not know: everything the collector may have written |

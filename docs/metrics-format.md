@@ -35,7 +35,7 @@ In this order; the header is the names joined by commas. A column is only ever a
 | `effort` | the effort the role's agent file names in the line's setup; `unknown` when it names none, and for `main` |
 | `project` | the name of the project's main checkout folder |
 | `templates` | the applied templates, each as `<name>@<library commit>`, joined by `+`; `none` when the lock lists none |
-| `roles` | each role's model and effort as the agent files name them, `<role>=<model>/<effort>`, joined by `+` |
+| `roles` | each role's model and effort as the agent files name them, `<role>=<model>/<effort>`, joined by `+`; an agent file is a file of `.claude/agents/` that opens with front matter (`---`) |
 
 The four kinds of tokens are never added together. `project`, `templates` and `roles` are the setup's
 fingerprint: two lines with the same three were made by the same setup. Times are UTC, to the second, as
@@ -59,8 +59,9 @@ A value read from outside the collector is checked before use; one that does not
 | role, model | a plain word: letters, digits and `-` (a model also `.`, `_`, `:`, `[`, `]`) | the run or the part is counted and not written |
 | model, effort in an agent file; template name, library commit in the lock | plain words; 40 or 64 hex digits for a commit | the collection is refused when a line needs that setup |
 | session id, agent id, API call id, time | their id shapes | the transcript is counted as not read whole |
+| token count | a whole number from 0 to 2^53 − 1, in any form JSON writes it (`1E2`, `10.0`); written as digits | the transcript is counted as not read whole |
 
-A field of `tasks.csv` starts with a letter or a digit and holds only letters, digits and `. _ : @ = / + [ ] -`: it
+A number in `tasks.csv` is written as digits. Any other field starts with a letter or a digit and holds only letters, digits and `. _ : @ = / + [ ] -`: it
 cannot hold a separator, a quote or a line break, nor start a spreadsheet formula.
 
 ## What becomes a line
@@ -75,8 +76,10 @@ cannot hold a separator, a quote or a line break, nor start a spreadsheet formul
 - **Each API call counts once**, by its message id, in all the project's transcripts. One call is written as
   several records that repeat its usage; where they differ, the largest of each kind is the call's. A resumed or
   forked session's file starts with a copy of the earlier session's records, and its folder holds copies of the
-  earlier runs: a copied call belongs to the session its records name (the first of them in the order of their ids
-  when the copies name several), a copied run is one line by its agent id.
+  earlier runs; a copied run is one line by its agent id. A copied call's records name the earlier session or the
+  new one, so of the sessions they name, the call belongs to one whose line has counted it already (its time falls
+  within that line), else to one that ended before the start (so it is never written), else to the first in the
+  order of their ids.
 - **The setup in force** at a time is the project's state at the newest commit of the checked out branch, not
   later than that time, that changed `.ctxm/ctxm.lock` or `.claude/agents/`. A run or a part of a session at a
   commit without `.ctxm/ctxm.lock` is counted on stderr and not written.
@@ -99,21 +102,33 @@ cannot hold a separator, a quote or a line break, nor start a spreadsheet formul
 - **Calls a run makes after its line was written** (a finished run that is continued).
 - A record whose model is `<synthetic>`: Claude Code writes it for a message it made itself, without an API call.
 
+## Known limit: a copy that outlives its original
+Whether a call was counted is read from the transcripts that hold it and the times of the lines: `tasks.csv` keeps
+no call ids. So when a fork's or a resume's copy names the new session and the earlier session's own transcript is
+deleted (Claude Code removes old ones) before the new session has a line, the next collection counts the copied
+calls again, under the new session; and a session that ended before the start, deleted the same way, is counted
+through such a copy. A copy that keeps the earlier session's id, or a new session that has its line before the
+deletion, is counted once.
+
 ## Refusals
-The collector exits 1 with one `error:` line and writes nothing when: a required tool is missing; the project
-folder is not the top of the project's main checkout (a subfolder, a linked worktree) or its name is no plain
-name; the transcripts folder is missing; `ctxm`, `ctxm/metrics`,
-`start` or `tasks.csv` is a symbolic link, or not a folder or a plain file; the transcripts folder holds a
-symbolic link on the way to a transcript; `start` holds anything but one past time; `tasks.csv` has another header
+The collector exits 1 with one `error:` line and writes nothing when, at the first collection as at any other:
+a required tool is missing; the project folder is not the top of the project's main checkout (a subfolder, a
+linked worktree) or its name is no plain name; the transcripts folder is missing or holds a symbolic link on the
+way to a transcript; `ctxm`, `ctxm/metrics`, `start` or `tasks.csv` is a symbolic link, or not a folder or a plain
+file. A later collection also when: `start` holds anything but one past time; `tasks.csv` has another header
 or a line that is none of the format; a line needs a setup whose lock is not in the format ctxm 0.7 writes
 (`version = 6`) or whose lock or agent files name something that is no plain word. A transcript with a line that is
 no JSON record, lacks what a record must carry, or is longer than 8 MiB is left out whole and counted on stderr; so
-is a run whose file name holds no agent id or whose `.meta.json` is no JSON object.
+is a run whose file name holds no agent id or whose `.meta.json` is no JSON object, and a transcript that is no plain
+file (a folder, a pipe). A step that fails without a refusal of its own (a full disk, a read-only folder) ends the
+collector the same way: exit 1, one `error:` line, nothing half-written. A closed stdout loses only the result: the
+collection is done, exit 0.
 
 ## Tools
 The templates ship no toolchain. The collector needs these from the project's own, on the `PATH`, and checks for
 them before it reads anything: `bash` 4.4 or later, `jq`, `git`, and `mkdir`, `mv`, `rm` (coreutils). Tested with
-bash 5.3.9, jq 1.8.2, git 2.54.0 and coreutils 9.11.
+bash 5.3.9, jq 1.8.2, git 2.54.0 and coreutils 9.11. It reads the repository of the project folder only: it drops
+every `GIT_` variable of its environment (a git hook sets several) and turns off `log.showSignature`.
 
 ## Key names read from a transcript
 Only `facts.jq` knows them. "Checked" means seen on real transcripts on 2026-11-22, by key names, value types and

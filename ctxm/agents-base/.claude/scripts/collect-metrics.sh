@@ -11,8 +11,9 @@
 # It writes only ctxm/metrics/, numbers and checked names only: no prompt, file or report text. A second
 # collection adds nothing; an interrupted one writes nothing.
 # Prints the result on stdout (how many lines), and on stderr a count for each reason a run or a session was not
-# written. Exits 0 when the collection is done, 1 when it is refused (one `error:` line; nothing written).
-# Needs bash 4.4 or later, jq, git, mkdir, mv and rm from the project's own toolchain, and checks for them first.
+# written. Exits 0 when the collection is done (a closed stdout loses only the result), 1 when it is refused or a
+# step fails (one `error:` line; nothing written).
+# Needs the tools metrics/tools.sh names, from the project's own toolchain, and checks for them first.
 # The format and the rules: docs/metrics-format.md of the template library.
 set -euo pipefail
 
@@ -37,14 +38,16 @@ PROJECT_FOLDER=.
 TRANSCRIPTS_FOLDER=''
 
 main() {
+  trap end_collector EXIT
   require_tools
   shopt -s inherit_errexit
   read_arguments "$@"
   forget_inherited_repository
   find_project "$PROJECT_FOLDER"
   refuse_unsafe_store
-  trap end_collector EXIT
-  trap 'exit 1' TERM INT HUP
+  find_transcripts
+  name_project
+  trap 'refuse "the collection was interrupted; ctxm/metrics/ holds no half-written file"' TERM INT HUP
   if has_stored "$START_FILE"; then
     collect
   else
@@ -53,13 +56,30 @@ main() {
 }
 
 # Runs when the collector ends, however it ends: an unfinished write is removed, and a step that failed without
-# a refusal of its own (a tool that stopped, a full disk) ends the collector with 1, as a refusal does.
+# a refusal of its own (a tool that stopped, a full disk) gets the one line a refusal has; both end with 1.
 end_collector() {
   local status=$?
   discard_prepared_file
-  ((status == 0 || status == 1)) && return
-  printf 'error: a step of the collection failed, see above; ctxm/metrics/ holds no half-written file\n' >&2
+  ((status == 0)) && return
+  ((status == REFUSED_STATUS)) \
+    || printf 'error: a step of the collection failed, see above; ctxm/metrics/ holds no half-written file\n' >&2
   exit 1
+}
+
+# Sets TRANSCRIPTS_FOLDER, or ends the collector: the folder must be there and hold no link on the way to a
+# transcript. The first collection checks it too, so a project it starts can be collected.
+find_transcripts() {
+  TRANSCRIPTS_FOLDER="${TRANSCRIPTS_FOLDER:-$(default_transcripts_folder)}"
+  [[ -d "$TRANSCRIPTS_FOLDER" ]] || refuse "no transcripts folder where it was looked for; name it with --transcripts"
+  refuse_linked_transcripts "$TRANSCRIPTS_FOLDER"
+  readonly TRANSCRIPTS_FOLDER
+}
+
+# Sets PROJECT_NAME, or ends the collector when the folder's name is no plain name.
+name_project() {
+  PROJECT_NAME="$(project_name)"
+  [[ -n "$PROJECT_NAME" ]] || refuse "the project folder's name is no plain name, so no line can name the project"
+  readonly PROJECT_NAME
 }
 
 read_arguments() {
@@ -79,10 +99,10 @@ start_metrics() {
   local now
   now="$(metrics_jq format 'now | floor | time_text' --null-input --raw-output)"
   if [[ "$DRY_RUN" == yes ]]; then
-    printf '%s: the metrics of the project would start now; dry run, nothing written\n' "$START_FILE"
+    tell "$START_FILE: the metrics of the project would start now; dry run, nothing written"
   else
     store "$START_FILE" "$now"
-    printf '%s: the metrics of the project start at %s; what ended before is never collected\n' "$START_FILE" "$now"
+    tell "$START_FILE: the metrics of the project start at $now; what ended before is never collected"
   fi
 }
 
@@ -94,10 +114,10 @@ collect() {
   [[ -z "$refusal" ]] || refuse "$refusal; nothing was written"
   plan_part '.notes[] | "note: \(.)"' "$plan" >&2
   if [[ "$DRY_RUN" == yes ]]; then
-    printf '%s: lines to add: %s; dry run, nothing written\n' "$TASKS_FILE" "$(plan_part .result "$plan")"
+    tell "$TASKS_FILE: lines to add: $(plan_part .result "$plan"); dry run, nothing written"
   else
     store_added_lines "$plan"
-    printf '%s: lines added: %s\n' "$TASKS_FILE" "$(plan_part .result "$plan")"
+    tell "$TASKS_FILE: lines added: $(plan_part .result "$plan")"
   fi
 }
 
@@ -108,21 +128,12 @@ store_added_lines() {
 
 # Prints the plan of the collection (lines.jq), from the facts of the project and of its transcripts.
 collection_plan() {
-  local folder="${TRANSCRIPTS_FOLDER:-$(default_transcripts_folder)}" name written=(--arg written '')
-  require_readable_transcripts "$folder"
-  name="$(project_name)"
-  [[ -n "$name" ]] || refuse "the project folder's name is no plain name, so no line can name the project"
+  local written=(--arg written '')
   ! has_stored "$TASKS_FILE" || written=(--rawfile written "$PROJECT/$TASKS_FILE")
   # shellcheck disable=SC2016 # $project, $start and $written are jq's
-  collection_facts "$folder" | metrics_jq "format events report lines" '
+  collection_facts "$TRANSCRIPTS_FOLDER" | metrics_jq "format events report lines" '
     plan({project: $project, now: (now | floor), start: $start, written: $written})
-  ' --null-input --compact-output --arg project "$name" --arg start "$(stored_start)" "${written[@]}"
-}
-
-# Ends the collector unless the transcripts folder is there and holds no link on the way to a transcript.
-require_readable_transcripts() {
-  [[ -d "$1" ]] || refuse "no transcripts folder where it was looked for; name it with --transcripts"
-  refuse_linked_transcripts "$1"
+  ' --null-input --compact-output --arg project "$PROJECT_NAME" --arg start "$(stored_start)" "${written[@]}"
 }
 
 # Prints every fact the plan is made from, one JSON object per line: the setups, the sessions, the runs.
@@ -139,6 +150,12 @@ written_agents() {
   has_stored "$TASKS_FILE" || return 0
   metrics_jq format '[written_lines[] | select(.role != main_role) | .agent] | join(" ")' \
     --raw-input --slurp --raw-output "$PROJECT/$TASKS_FILE" 2>/dev/null || true
+}
+
+# Prints the result on stdout. The collection is done by then: a closed stdout loses the message, not the work.
+tell() {
+  trap '' PIPE
+  printf '%s\n' "$1" 2>/dev/null || true
 }
 
 # Prints a part of the plan as text.

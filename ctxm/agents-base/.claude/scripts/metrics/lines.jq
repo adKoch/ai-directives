@@ -74,13 +74,25 @@ def part_outcome($session; $events):
     else under($setup; session_line($session; $events; $setup))
     end;
 
+# What tells setups apart: the fingerprint; a setup without one (no lock, a problem) by its commit.
+def setup_key: if .fingerprint then .fingerprint else {commit} end;
+
+# The events (the input) in parts of the same setup, in time order: a commit that leaves the fingerprint as it was
+# (an agent file's description) starts no new part.
+def in_setup_parts($setups):
+  sort_by(.time)
+  | reduce .[] as $event ([];
+      ($setups | setup_at($event.time) | setup_key) as $key
+      | if length > 0 and .[-1].key == $key then .[-1].events += [$event] else . + [{key: $key, events: [$event]}] end)
+  | map(.events);
+
 # A session is written when it is closed, and only if it ended after the start: then whole, one line per setup.
 def session_outcomes($session; $events):
   . as $collection
   | if .last[$session] > .now - quiet_seconds then [{skipped: "open"}]
     elif .last[$session] <= .start then [{skipped: "before_start"}]
     else $events
-      | group_by(.time as $time | $collection.setups | setup_at($time) | .commit)
+      | in_setup_parts($collection.setups)
       | map(. as $part | $collection | part_outcome($session; $part))
     end;
 
@@ -108,6 +120,11 @@ def last_records:
   reduce (.[] | select(.kind == "session") | .sessions | to_entries[]) as $seen ({};
     .[$seen.key] = ([.[$seen.key], $seen.value] | max));
 
+# The spans of time the lines of each main session cover, in seconds.
+def counted_spans:
+  reduce (.[] | select(.role == main_role)) as $line ({};
+    .[$line.session] += [{from: ($line.start | time_seconds), to: ($line.end | time_seconds)}]);
+
 # The end of the last line each main session has.
 def counted_until:
   reduce (.[] | select(.role == main_role)) as $line ({};
@@ -131,11 +148,12 @@ def collection($facts; $settings):
       start: ($settings.start | start_seconds($settings.now)),
       setups: ($facts | map(select(.kind == "setup"))),
       transcripts: $transcripts,
-      events: ($transcripts | owned_events | by_owner),
       last: ($transcripts | last_records),
+      counted_spans: ($written | counted_spans),
       counted_until: ($written | counted_until),
       written_agents: ($written | written_agents)
-    };
+    }
+  | with_owned_events($transcripts);
 
 def planned($facts; $settings):
   collection($facts; $settings)

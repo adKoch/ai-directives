@@ -1,14 +1,17 @@
 # shellcheck shell=bash
-# The collector's tool requirement. The templates ship no toolchain: the project's own provides bash, jq, git and
-# the three coreutils commands the collector calls. Sourced by collect-metrics.sh, which calls require_tools before
-# it reads anything.
+# The collector's tool requirement, and its refusal. The templates ship no toolchain: the project's own provides
+# bash, jq, git and the three coreutils commands the collector calls. Sourced first by collect-metrics.sh, which
+# calls require_tools before it reads anything.
 
 readonly REQUIRED_TOOLS=(jq git mkdir mv rm)
-readonly REQUIREMENT="the project's toolchain must provide bash 4.4 or later, jq, git, mkdir, mv and rm"
+# The status of a refusal inside the collector, so that its end tells a refusal (its line already said) from a step
+# that failed; the collector itself exits 1 for both.
+readonly REFUSED_STATUS=3
 
+# Ends the collector with one `error:` line saying why.
 refuse() {
   printf 'error: %s\n' "$*" >&2
-  exit 1
+  exit "$REFUSED_STATUS"
 }
 
 # Ends the collector with one line naming every required tool that is missing; returns when all are there.
@@ -19,11 +22,18 @@ require_tools() {
     command -v "$tool" >/dev/null 2>&1 || missing+=("$tool")
   done
   ((${#missing[@]} == 0)) && return
-  refuse "collect-metrics.sh needs $(comma_separated "${missing[@]}"): not on the PATH; $REQUIREMENT"
+  refuse "collect-metrics.sh needs $(comma_separated "${missing[@]}"): not on the PATH;" \
+    "the project's toolchain must provide $(listed "bash 4.4 or later" "${REQUIRED_TOOLS[@]}")"
 }
 
 comma_separated() {
   local separated
   printf -v separated '%s, ' "$@"
   printf '%s\n' "${separated%, }"
+}
+
+# Prints the words as a list: commas, and `and` before the last.
+listed() {
+  local all_but_last=("${@:1:$#-1}")
+  printf '%s and %s\n' "$(comma_separated "${all_but_last[@]}")" "${!#}"
 }
