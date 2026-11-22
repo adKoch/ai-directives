@@ -1,7 +1,7 @@
 # What a file of layout.jq holds, as Claude Code writes it: the records of a transcript and a run's `.meta.json`,
-# filled with synthetic values. The key names a real transcript uses are written in this file and nowhere else in
-# the support; README.md says where each is known from. Every free text carries the mark, so one search of a
-# collector's output shows whether text got out.
+# filled with synthetic values. Of the makers, only this file writes the key names a real transcript uses (the
+# tests of the support name the ones they read, so a renamed key changes them too); README.md says where each is
+# known from. Every free text carries the mark, so one search of a collector's output shows whether text got out.
 # jq reads a definition before its use, so the entry, file_content, is the last one: read from the bottom up.
 
 def text_mark: "synthetic-text";
@@ -63,7 +63,8 @@ def writer_keys:
   + (if .agent == null then {isSidechain: false} else {isSidechain: true, agentId: .agent} end);
 
 # The uuid depends only on the writer's file and the record's place in it, so a copy of the record in another
-# session's file has the same one, and so has every build of the shape.
+# session's file has the same one, and so has every build of the shape. Twelve digits: four for the file, six for
+# the event, two for the record; layout.jq (checked_shape) refuses a shape that would need more.
 def synthetic_uuid($index):
   "00000000-0000-4000-8000-\("000000000000\(.writer.file * 100000000 + .position * 100 + $index)"[-12:])";
 

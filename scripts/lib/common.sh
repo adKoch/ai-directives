@@ -10,6 +10,8 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 readonly REPO_ROOT
+# Logs and scratch files, a folder per step.
+readonly CACHE_DIR="$REPO_ROOT/.cache"
 
 die() {
   printf 'error: %s\n' "$*" >&2
@@ -26,6 +28,13 @@ shown_script_path() {
   local path
   path="$(script_path)"
   printf '%s\n' "${path#"$REPO_ROOT"/}"
+}
+
+# Makes the cache's folder of that name. The cache ignores itself, so the checkout stays clean without a line in a
+# tracked file.
+make_ignored_cache_folder() {
+  mkdir -p "$CACHE_DIR/$1"
+  [[ -f "$CACHE_DIR/.gitignore" ]] || printf '*\n' >"$CACHE_DIR/.gitignore"
 }
 
 # shellcheck source=tools.sh

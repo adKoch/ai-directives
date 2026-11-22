@@ -1,5 +1,5 @@
 {
-  "about": "One main session with four runs: one finishes at minute 8; one finishes at minute 20, so it is unfinished in a build at an earlier minute; one never finishes; one finishes but its first prompt names no task. Every run uses 1, 10, 100 and 1000 tokens per call.",
+  "about": "One main session with five runs: one finishes at minute 8; one finishes at minute 20, so it is unfinished in a build at an earlier minute; one never finishes; one finishes but its first prompt names no task; one finishes at minute 11 and its first prompt names the task in another arrangement: an item id first, then the task name after `Task:`, then the task name again in a workspace path. Every run uses 1, 10, 100 and 1000 tokens per call.",
   "sessions": [
     {
       "id": "cccccccc-0000-4000-8000-000000000001",
@@ -51,6 +51,17 @@
           "events": [
             {"minute": 7, "prompt": "synthetic-text a question that names no task"},
             {"minute": 8, "call": "msg_synthetic_unnamed_01", "usage": {"input_tokens": 1, "output_tokens": 10, "cache_creation_input_tokens": 100, "cache_read_input_tokens": 1000}}
+          ]
+        },
+        {
+          "agent": "c0000000000000005",
+          "role": "inspector",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text what the run is for",
+          "finished": 11,
+          "events": [
+            {"minute": 9, "prompt": "synthetic-text the inspection of REQ-900-3E; Task: `REQ-900-3E-named-later`, round 2; workspace ctxm/tmp/REQ-900-3E-named-later/"},
+            {"minute": 10, "call": "msg_synthetic_named_later_01", "usage": {"input_tokens": 1, "output_tokens": 10, "cache_creation_input_tokens": 100, "cache_read_input_tokens": 1000}}
           ]
         }
       ]

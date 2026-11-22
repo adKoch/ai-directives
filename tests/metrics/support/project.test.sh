@@ -13,11 +13,11 @@ test_the_template_update_falls_inside_the_session_that_spans_it_and_changes_the_
   "$SUPPORT/make-project.sh" "$FIXTURES/projects/template-update.json" "$PWD/project" "$EPOCH"
   "$SUPPORT/make-transcripts.sh" "$SPANNING_SHAPE" "$PWD/transcripts" "$EPOCH"
   update="$(git -C project log -1 --format=%ct)"
-  assert_equal "$(calls_on_each_side_of "$update" "$session")" '{"before":2,"after":2}'
-  assert_equal "$(locked_commit HEAD~1)" 1111111111111111111111111111111111111111
-  assert_equal "$(locked_commit HEAD)" 2222222222222222222222222222222222222222
-  assert_equal "$(inspector_effort HEAD~1)" medium
-  assert_equal "$(inspector_effort HEAD)" high
+  assert_prints '{"before":2,"after":2}' calls_on_each_side_of "$update" "$session"
+  assert_prints 1111111111111111111111111111111111111111 locked_commit HEAD~1
+  assert_prints 2222222222222222222222222222222222222222 locked_commit HEAD
+  assert_prints medium inspector_effort HEAD~1
+  assert_prints high inspector_effort HEAD
 }
 
 # Prints how many of the session's API calls began before the time (in seconds since 1970) and how many after it.

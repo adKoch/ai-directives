@@ -6,15 +6,17 @@
 #   <epoch>         the time the history's minute 0 stands for, as 2026-01-05T09:00:00Z; give the transcripts of the
 #                   same scenario the same one
 # The folder must not hold a repository yet.
-set -euo pipefail
+# shellcheck source=../../../scripts/lib/common.sh
+source "$(dirname "${BASH_SOURCE[0]}")/../../../scripts/lib/common.sh"
+require_tools jq git
+(($# == 3)) || die "usage: $(shown_script_path) <history.json> <project folder> <epoch>"
+ensure_budget "$@"
 
-SUPPORT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly SUPPORT
+readonly SUPPORT="$REPO_ROOT/tests/metrics/support" HISTORY=$1 PROJECT=$2 EPOCH=$3
 # shellcheck source=files.sh
 source "$SUPPORT/files.sh"
 
 main() {
-  readonly HISTORY=$1 PROJECT=$2 EPOCH=$3
   local count ordinal
   start_repository
   count="$(jq '.commits | length' "$HISTORY")"
@@ -24,10 +26,7 @@ main() {
 }
 
 start_repository() {
-  if [[ -e "$PROJECT/.git" ]]; then
-    printf 'error: %s already holds a repository; give make-project.sh a new folder\n' "$PROJECT" >&2
-    exit 1
-  fi
+  [[ ! -e "$PROJECT/.git" ]] || die "$PROJECT already holds a repository; give make-project.sh a new folder"
   mkdir -p "$PROJECT"
   GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null git init --quiet --initial-branch=main "$PROJECT"
 }
@@ -42,7 +41,7 @@ commit_state() {
   write_files "$PROJECT" <<<"$files"
   project_git add --all
   GIT_AUTHOR_DATE="$date" GIT_COMMITTER_DATE="$date" \
-    project_git commit --quiet --allow-empty --message "synthetic commit $ordinal"
+    project_git commit --quiet --allow-empty --message "synthetic-text commit $ordinal"
 }
 
 # Prints what a filter of project.jq gives for one commit of the history.

@@ -59,11 +59,37 @@ def session_files:
   | {file: "\(.id).jsonl", session: {id, title, agent_name}, events},
     (.runs[] | run_files($session));
 
+def refuse($why): error("the shape \($why)");
+
+def in_time_order: map(.minute) | . == sort;
+
+def check_events($writer):
+  (.events // []) as $events
+  | if ($events | in_time_order | not) then refuse("lists the events of \($writer) out of time order")
+    elif ($events | length) > 999999 then refuse("gives \($writer) more than 999999 events")
+    elif any($events[]; (.records // 1) > 100) then refuse("writes a call of \($writer) in more than 100 records")
+    else . end;
+
+def check_session:
+  check_events("session \(.id)")
+  | if (.runs // [] | length) > 99 then refuse("gives session \(.id) more than 99 runs") else . end
+  | (.runs // [] | map(check_events("run \(.agent)"))) as $_
+  | .;
+
+# A record's uuid is built from its writer's file and its place there (records.jq, synthetic_uuid), and a build at a
+# later minute only adds to an earlier one when the events are in time order: a shape beyond these limits stops the
+# build.
+def checked_shape:
+  if (.sessions | length) > 100 then refuse("has more than 100 sessions") else . end
+  | (.sessions | map(check_session)) as $_
+  | .;
+
 # The files of the shape as they stand $minute minutes after its epoch: one entry per file, with the events of a
 # transcript (and the session that opens it), or the run a `.meta.json` describes. A session that has written
 # nothing by itself yet has no file, and neither have its runs.
 def transcript_layout($minute):
-  [.sessions | to_entries[] | .key as $ordinal | .value | own_session($ordinal)] as $sessions
+  checked_shape
+  | [.sessions | to_entries[] | .key as $ordinal | .value | own_session($ordinal)] as $sessions
   | [$sessions[] | standing_at($minute) | select(.events != [])] as $standing
   | $standing[]
   | with_copied($standing)

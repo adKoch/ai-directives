@@ -6,10 +6,13 @@
 #   <minute>      build the files as they stand that many minutes after the epoch (default: when all is written);
 #                 building again with a later minute lets the transcripts grow as real ones do
 # Nothing is written unless the whole shape builds.
-set -euo pipefail
+# shellcheck source=../../../scripts/lib/common.sh
+source "$(dirname "${BASH_SOURCE[0]}")/../../../scripts/lib/common.sh"
+require_tools jq
+(($# == 3 || $# == 4)) || die "usage: $(shown_script_path) <shape.json> <transcripts folder> <epoch> [<minute>]"
+ensure_budget "$@"
 
-SUPPORT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly SUPPORT
+readonly SUPPORT="$REPO_ROOT/tests/metrics/support"
 # shellcheck source=files.sh
 source "$SUPPORT/files.sh"
 

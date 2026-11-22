@@ -3,12 +3,15 @@
 # tools are checked:
 #   ensure_budget "$@"
 # The script then runs again as a process group of its own, while the first shell (the holder) keeps the time. Over
-# the budget, the holder stops the whole group and says which budget was hit; a signal that ends the holder stops the
-# group first. So nothing a budgeted script starts may leave its group: no `setsid`, `timeout` only with
-# `--foreground`.
-# Limits: the run starts with INT and QUIT ignored (bash does that to a background command; the holder answers
-# them), and a holder that is killed outright (KILL) leaves the run to the group's own `timeout`, which ends it
-# a little after the budget.
+# the budget, the holder stops the whole group and says which budget was hit; an INT, QUIT, TERM or HUP that ends the
+# holder stops the group first. So nothing a budgeted script starts may leave its group: no `setsid`, `timeout` only
+# with `--foreground`.
+# The run is not the terminal's foreground group, so it ignores TTOU and TTIN: it writes to the terminal without being
+# stopped, also under `stty tostop`. It starts with INT and QUIT ignored (bash does that to a background command); the
+# holder answers them.
+# Limits: a holder that is killed outright (KILL) leaves the run to the group's own `timeout`, which kills the whole
+# group (KILL, no grace) a little after the budget; so does a signal that reaches the holder in the instant between
+# starting the run and noting its group.
 
 readonly BUDGET_VARIABLE=LIBRARY_BUDGET_SECONDS
 readonly DEFAULT_BUDGET_SECONDS=300
@@ -21,6 +24,7 @@ readonly OVER_BUDGET=124
 # (a script called by a budgeted script runs inside the caller's budget).
 ensure_budget() {
   if [[ -n "${LIBRARY_WITHIN_BUDGET:-}" ]]; then
+    write_to_the_terminal_from_the_background
     return
   fi
   local seconds status=0
@@ -30,6 +34,11 @@ ensure_budget() {
     die "$(shown_script_path) stopped: over its budget of ${seconds}s ($BUDGET_VARIABLE sets it)"
   fi
   exit "$status"
+}
+
+# Ignored signals stay ignored in every command the run starts, so none of them is stopped by a terminal write.
+write_to_the_terminal_from_the_background() {
+  trap '' TTOU TTIN
 }
 
 budget_seconds() {
@@ -45,8 +54,9 @@ run_within_budget() {
   local seconds=$1 deadline status=0
   shift
   deadline=$((SECONDS + seconds + 1))
-  start_run "$seconds" "$@"
+  RUN_GROUP=
   stop_run_when_signalled
+  start_run "$seconds" "$@"
   while run_goes_on && ((SECONDS < deadline)); do
     sleep 0.1
   done
@@ -57,24 +67,26 @@ run_within_budget() {
     wait "$RUN_GROUP" || status=$?
     ((status != OVER_BUDGET)) || status=1
   fi
-  trap - INT TERM HUP
+  trap - INT QUIT TERM HUP
   return "$status"
-}
-
-# `timeout` makes the run a process group, numbered by its PID. The holder keeps the time; the time `timeout` gets
-# is only the backstop for a holder that was killed.
-start_run() {
-  local seconds=$1
-  shift
-  LIBRARY_WITHIN_BUDGET=1 timeout "$((seconds + 2 * STOP_GRACE_SECONDS))" "$@" </dev/null &
-  RUN_GROUP=$!
 }
 
 # A signal that ends the holder stops the run first; the holder then ends with that signal's usual status.
 stop_run_when_signalled() {
   trap 'stop_run; exit 130' INT
+  trap 'stop_run; exit 131' QUIT
   trap 'stop_run; exit 143' TERM
   trap 'stop_run; exit 129' HUP
+}
+
+# `timeout` makes the run a process group, numbered by its PID. The holder keeps the time; the time `timeout` gets
+# is only the backstop for a holder that was killed. It sends KILL: `timeout` sends its signal to the whole group but
+# waits only for its own command, so a TERM that ends the command would leave a process that ignores TERM running.
+start_run() {
+  local seconds=$1
+  shift
+  LIBRARY_WITHIN_BUDGET=1 timeout --signal=KILL "$((seconds + 2 * STOP_GRACE_SECONDS))" "$@" </dev/null &
+  RUN_GROUP=$!
 }
 
 run_goes_on() {
@@ -94,8 +106,10 @@ stop_run() {
   wait "$RUN_GROUP" 2>/dev/null || true
 }
 
+# Signals the run's group; a `timeout` that has not made its group yet gets the signal itself, so it never starts
+# the run.
 signal_run() {
-  kill -"$1" -- "-$RUN_GROUP" 2>/dev/null || true
+  kill -"$1" -- "-$RUN_GROUP" 2>/dev/null || kill -"$1" "$RUN_GROUP" 2>/dev/null || true
 }
 
 run_has_members() {
