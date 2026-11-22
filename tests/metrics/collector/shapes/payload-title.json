@@ -1,0 +1,28 @@
+{
+  "about": "One main session whose title and agent name carry payloads: a formula, commas, quotes, a line break and a path with `..`. Both hold the mark. The session uses 1, 10, 100 and 1000 tokens.",
+  "sessions": [
+    {
+      "id": "99999999-0000-4000-8000-000000000002",
+      "model": "claude-synthetic-large",
+      "events": [
+        {
+          "minute": 0,
+          "prompt": "synthetic-text the owner asks for several things"
+        },
+        {
+          "minute": 1,
+          "call": "msg_synthetic_payload_main",
+          "usage": {
+            "input_tokens": 1,
+            "output_tokens": 10,
+            "cache_creation_input_tokens": 100,
+            "cache_read_input_tokens": 1000
+          }
+        }
+      ],
+      "runs": [],
+      "title": "=HYPERLINK(\"synthetic-text\"),\"x\"\nsynthetic-text second line",
+      "agent_name": "@synthetic-text,../../synthetic-text"
+    }
+  ]
+}
