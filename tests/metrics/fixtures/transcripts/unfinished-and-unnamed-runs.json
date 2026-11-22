@@ -1,0 +1,59 @@
+{
+  "about": "One main session with four runs: one finishes at minute 8; one finishes at minute 20, so it is unfinished in a build at an earlier minute; one never finishes; one finishes but its first prompt names no task. Every run uses 1, 10, 100 and 1000 tokens per call.",
+  "sessions": [
+    {
+      "id": "cccccccc-0000-4000-8000-000000000001",
+      "model": "claude-synthetic-large",
+      "events": [
+        {"minute": 0, "prompt": "synthetic-text the owner asks for several things"},
+        {"minute": 1, "call": "msg_synthetic_several_01", "usage": {"input_tokens": 4, "output_tokens": 40, "cache_creation_input_tokens": 400, "cache_read_input_tokens": 4000}}
+      ],
+      "runs": [
+        {
+          "agent": "c0000000000000001",
+          "role": "standard-worker",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text what the run is for",
+          "finished": 8,
+          "events": [
+            {"minute": 2, "prompt": "Task: `REQ-900-3A-finished-early` synthetic-text the plan item"},
+            {"minute": 3, "call": "msg_synthetic_early_01", "records": 2, "usage": {"input_tokens": 1, "output_tokens": 10, "cache_creation_input_tokens": 100, "cache_read_input_tokens": 1000}}
+          ]
+        },
+        {
+          "agent": "c0000000000000002",
+          "role": "standard-worker",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text what the run is for",
+          "finished": 20,
+          "events": [
+            {"minute": 2, "prompt": "Task: `REQ-900-3B-finished-late` synthetic-text the plan item"},
+            {"minute": 4, "call": "msg_synthetic_late_01", "usage": {"input_tokens": 1, "output_tokens": 10, "cache_creation_input_tokens": 100, "cache_read_input_tokens": 1000}},
+            {"minute": 19, "call": "msg_synthetic_late_02", "records": 2, "usage": {"input_tokens": 1, "output_tokens": 10, "cache_creation_input_tokens": 100, "cache_read_input_tokens": 1000}}
+          ]
+        },
+        {
+          "agent": "c0000000000000003",
+          "role": "reviewer",
+          "model": "claude-synthetic-large",
+          "description": "synthetic-text what the run is for",
+          "events": [
+            {"minute": 5, "prompt": "Task: `REQ-900-3C-never-finished` synthetic-text the commit to check"},
+            {"minute": 6, "call": "msg_synthetic_never_01", "usage": {"input_tokens": 1, "output_tokens": 10, "cache_creation_input_tokens": 100, "cache_read_input_tokens": 1000}}
+          ]
+        },
+        {
+          "agent": "c0000000000000004",
+          "role": "problem-solver",
+          "model": "claude-synthetic-large",
+          "description": "synthetic-text what the run is for",
+          "finished": 9,
+          "events": [
+            {"minute": 7, "prompt": "synthetic-text a question that names no task"},
+            {"minute": 8, "call": "msg_synthetic_unnamed_01", "usage": {"input_tokens": 1, "output_tokens": 10, "cache_creation_input_tokens": 100, "cache_read_input_tokens": 1000}}
+          ]
+        }
+      ]
+    }
+  ]
+}

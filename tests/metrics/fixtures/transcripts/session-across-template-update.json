@@ -1,0 +1,40 @@
+{
+  "about": "A main session that goes on across a `ctxm update`. Built with the same epoch as the project history `projects/template-update.json`, whose second commit is at minute 30: the session's calls at minutes 5 and 20 and its first run (2 to 12) are under the first setup, its calls at minutes 40 and 55 and its second run (42 to 50) under the second. Under the first setup the session uses 3, 30, 300 and 3000 tokens, under the second 12, 120, 1200 and 12000; each run 5, 50, 500 and 5000.",
+  "sessions": [
+    {
+      "id": "ffffffff-0000-4000-8000-000000000001",
+      "model": "claude-synthetic-large",
+      "events": [
+        {"minute": 0, "prompt": "synthetic-text the owner asks for two items"},
+        {"minute": 5, "call": "msg_synthetic_across_01", "records": 2, "usage": {"input_tokens": 1, "output_tokens": 10, "cache_creation_input_tokens": 100, "cache_read_input_tokens": 1000}},
+        {"minute": 20, "call": "msg_synthetic_across_02", "usage": {"input_tokens": 2, "output_tokens": 20, "cache_creation_input_tokens": 200, "cache_read_input_tokens": 2000}},
+        {"minute": 40, "call": "msg_synthetic_across_03", "usage": {"input_tokens": 4, "output_tokens": 40, "cache_creation_input_tokens": 400, "cache_read_input_tokens": 4000}},
+        {"minute": 55, "call": "msg_synthetic_across_04", "records": 2, "usage": {"input_tokens": 8, "output_tokens": 80, "cache_creation_input_tokens": 800, "cache_read_input_tokens": 8000}}
+      ],
+      "runs": [
+        {
+          "agent": "f0000000000000001",
+          "role": "inspector",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text what the run is for",
+          "finished": 12,
+          "events": [
+            {"minute": 2, "prompt": "Task: `REQ-900-5A-before-the-update` synthetic-text the commit to read"},
+            {"minute": 3, "call": "msg_synthetic_old_setup_01", "records": 2, "usage": {"input_tokens": 5, "output_tokens": 50, "cache_creation_input_tokens": 500, "cache_read_input_tokens": 5000}}
+          ]
+        },
+        {
+          "agent": "f0000000000000002",
+          "role": "inspector",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text what the run is for",
+          "finished": 50,
+          "events": [
+            {"minute": 42, "prompt": "Task: `REQ-900-5B-after-the-update` synthetic-text the commit to read"},
+            {"minute": 43, "call": "msg_synthetic_new_setup_01", "usage": {"input_tokens": 5, "output_tokens": 50, "cache_creation_input_tokens": 500, "cache_read_input_tokens": 5000}}
+          ]
+        }
+      ]
+    }
+  ]
+}
