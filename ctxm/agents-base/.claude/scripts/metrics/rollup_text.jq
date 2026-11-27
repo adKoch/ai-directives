@@ -1,6 +1,7 @@
 # The text of a roll-up (ctxm/metrics/<plan>.md), from the numbers of rollup.jq. Every value goes through
 # `field_text`, so a value that is no number, fixed word or checked name stops the collection: a roll-up holds
-# nothing but those and the fixed words of this file. Pure; needs format.jq. Read from the bottom (rollup_text) up.
+# nothing but those and the fixed words of this file. Pure; needs format.jq and rollup.jq (round_limit).
+# Read from the bottom (rollup_text) up.
 
 def cells: map(field_text) | join(" | ") | "| \(.) |";
 
@@ -24,6 +25,7 @@ def where_it_starts: [
   bullet("metrics start"; .start | time_text),
   bullet("plan first committed"; .first_commit | time_or_unknown),
   bullet("coverage"; .coverage),
+  "",
   "Coverage is `partial` when the project's metrics start after the plan's first commit: what ended before the",
   "start is in no number below. `unknown` means no commit of the plan file is known.",
   ""

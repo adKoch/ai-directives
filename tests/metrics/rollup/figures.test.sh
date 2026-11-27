@@ -29,7 +29,8 @@ expected_total_row() {
 collect_the_plan() {
   started_project "${1:-one-setup}" "${2:-2026-01-01T00:00:00Z}"
   commit_plan REQ-900 "$PLAN_TEXT"
-  commit_file 2026-01-05T09:30:00Z "REQ-900-1A-first-example: change" src/a.txt "$(printf 'a\nb\nc')"
+  put_file src/a.txt "$(printf 'a\nb\nc')"
+  commit_all 2026-01-05T09:30:00Z "REQ-900-1A-first-example: change"
   transcripts reviewed-items
   collected
 }
@@ -59,11 +60,44 @@ test_findings_are_counted_by_role_item_and_round_and_the_rounds_follow_the_revie
   assert_prints '- defects found at tests (blocking findings of the release-tester): 1' grep 'defects found' "$ROLLUP"
 }
 
-# catches: the lines of an item counted from commits that merely mention it.
-test_an_item_has_the_commits_whose_subject_names_it() {
+# catches: the lines of an item counted from commits that merely mention it, or an item with no commit here (its
+# commits may be in another repository) given 0 commits.
+test_an_item_has_the_commits_whose_subject_names_it_and_one_with_none_here_has_unknown() {
   collect_the_plan
   assert_prints '| REQ-900-1A-first-example | 1 | 3 | 0 |' grep 'first-example | 1 | 3' "$ROLLUP"
-  assert_prints '| REQ-900-1B-second-example | 0 | 0 | 0 |' grep 'second-example | 0 | 0' "$ROLLUP"
+  assert_prints '| REQ-900-1B-second-example | unknown | unknown | unknown |' \
+    grep 'second-example | unknown' "$ROLLUP"
+}
+
+# catches: a task that a plan only mentions (a dependency, a done list) counted as its item: the runs of another
+# plan's item would count in both roll-ups and stretch both periods.
+test_a_plans_items_are_only_the_tasks_of_its_item_headings() {
+  local other
+  # shellcheck disable=SC2016 # the backticks are the plan's own
+  other='synthetic-text another plan, after `REQ-900-1A-first-example` and `REQ-900-T1-final-test`.
+
+**2A standard-worker: synthetic-text** (task `REQ-901-2A-never-ran`)'
+  started_project one-setup
+  commit_plan REQ-900 "$PLAN_TEXT"
+  commit_plan REQ-901 "$other"
+  transcripts reviewed-items
+  collected
+  assert_prints 'REQ-900.md
+start
+tasks.csv' ls "$METRICS"
+}
+
+# catches: the Findings counts read from the text a run writes after its handback call instead of from the report
+# the call delivered, or from an earlier handback instead of the last.
+test_a_runs_findings_come_from_its_last_handback_else_from_its_last_text() {
+  started_project one-setup
+  commit_plan REQ-900 "$PLAN_TEXT"
+  transcripts handed-back-reports
+  collected
+  assert_prints '2,3' line_fields h0000000000000001 blocking nits
+  assert_prints 'none,none' line_fields h0000000000000002 blocking nits
+  assert_prints '0,4' line_fields h0000000000000003 blocking nits
+  assert_no_text_got_out
 }
 
 # catches: a number with no source filled in (the stop rule): each of them says `unknown`, none a guess.
@@ -105,7 +139,8 @@ test_main_sessions_that_overlap_the_period_count_whole_and_a_period_ending_befor
     grep '^| 2026-01-04' "$ROLLUP"
   rm -rf project transcripts
   started_project one-setup
-  commit_file 2026-01-06T00:00:00Z "synthetic-text the plan" ctxm/plans/REQ-900.md "$PLAN_TEXT"
+  put_file ctxm/plans/REQ-900.md "$PLAN_TEXT"
+  commit_all 2026-01-06T00:00:00Z "synthetic-text the plan"
   transcripts reviewed-items
   collected
   assert_prints '- main: unknown' grep '^- main' "$ROLLUP"

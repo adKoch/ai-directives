@@ -76,14 +76,15 @@ def by_column: [columns, .] | transpose | map({key: .[0], value: .[1]}) | from_e
 
 def is_line: (.start | is_time) and (.end | is_time);
 
-# The columns of the first format: no header with fewer is one of this format.
-def first_format_width: 17;
+# How many columns each header of the format named, the current one last: the first 17, then 19 with `blocking`
+# and `nits`. Columns are only ever added at the end, so an earlier header is the current one cut after that many;
+# a column added adds its width here.
+def header_widths: [17, 19];
 
-# How many columns a header names, when it is the header of this format or of an earlier one (columns are only ever
-# added at the end); null for any other header.
+# How many columns a header names, when it is the header of this format or of an earlier one; null for any other
+# header, a cut that never was a header included.
 def header_width:
-  . as $row
-  | first(range(first_format_width; (columns | length) + 1) | select(columns[:.] | join(",") == $row)) // null;
+  . as $row | first(header_widths[] | select(columns[:.] | join(",") == $row)) // null;
 
 # What a row of an earlier header lacks: the columns added since, each unknown (they had no source then).
 def missing_fields($width): [range($width; columns | length) | unknown];

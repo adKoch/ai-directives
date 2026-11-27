@@ -6,8 +6,8 @@
 #   sessions    the last time each session named by its records wrote one
 #   events      its API calls and compactions, each once, by id
 #   task        the task name of its first prompt, or null
-#   findings    the counts of the `Findings:` line its last text ends with, "malformed" when that line is none of
-#               the format, or null
+#   findings    the counts of the `Findings:` line its report ends with (the last handback, else the last
+#               text), "malformed" when that line is none of the format, or null
 # No text leaves this file: a value is a number, an id or a name that format.jq accepts, or null.
 # Pure; needs format.jq. Read from the bottom (transcript_facts) up.
 
@@ -74,6 +74,18 @@ def add_compaction($record; $time):
   else .unreadable += 1
   end;
 
+# The tool a subagent hands its report back with: the report is the `message` of the call's input, and text the
+# run writes after the call is never delivered.
+def handback_tool: "SubagentHandback";
+
+# The report a message's blocks hand back: the `message` of its last handback call, or null.
+def handed_back:
+  if type == "array"
+  then [.[] | select(field("type") == "tool_use" and field("name") == handback_tool) | field("input")
+      | field("message") | strings] | last
+  else null
+  end;
+
 # The text a message ends with: its last text block (a string is one block). Anything else gives null.
 def final_text:
   if type == "string" then .
@@ -93,13 +105,23 @@ def findings_of:
       | if . == null then "malformed" else map_values(tonumber) end)
     end;
 
-# Of the text an assistant record carries, only the Findings line of the last one is looked at.
+# Keeps, under the key, the Findings counts of the text when it is the latest of its kind seen.
+def latest($key; $text; $time):
+  if ($text | type) == "string" and (.[$key] == null or $time >= .[$key].time)
+  then .[$key] = {time: $time, findings: ($text | findings_of)}
+  else .
+  end;
+
+# Of the text an assistant record carries, only the Findings lines of the last handback and of the last text are
+# looked at.
 def add_report($record; $time):
-  ($record.message | field("content") | final_text) as $text
-  | if ($text | type) == "string" and (.report == null or $time >= .report.time)
-    then .report = {time: $time, findings: ($text | findings_of)}
-    else .
-    end;
+  ($record.message | field("content")) as $content
+  | latest("handback"; $content | handed_back; $time)
+  | latest("last_text"; $content | final_text; $time);
+
+# A run's report is what its last handback call delivered; a run that made none (a harness without the tool)
+# reports in its last text.
+def report_findings: (.handback // .last_text) | field("findings");
 
 # Only a transcript's first prompt is looked at.
 def add_prompt($record):
@@ -143,14 +165,15 @@ def record_of:
   end;
 
 def no_facts: {
-  unreadable: 0, first: null, last: null, sessions: {}, events: {}, prompted: false, task: null, report: null
+  unreadable: 0, first: null, last: null, sessions: {}, events: {}, prompted: false, task: null, handback: null,
+  last_text: null
 };
 
 # The facts of the transcript whose lines are the inputs.
 def transcript_facts:
   reduce (inputs | record_of) as $record (no_facts; add_record($record))
-  | .findings = .report.findings
-  | del(.prompted, .report)
+  | .findings = report_findings
+  | del(.prompted, .handback, .last_text)
   | .events |= [to_entries[] | .value + {id: .key}];
 
 # Adds what a run's `.meta.json` says ($text is empty when the run has none): whether the run has finished, and its

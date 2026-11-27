@@ -30,8 +30,8 @@ test_a_collection_into_a_closed_pipe_is_done_quietly() {
   assert_prints 2 line_count
 }
 
-# catches: files a killed collector left (`<file>.new.<its process id>`) piling up in ctxm/metrics/ for good, or a
-# collector that removes the file of another that still runs.
+# catches: files a killed collector left (`<file>.new.<its process id>`, `<file>.old.<its process id>`) piling up
+# in ctxm/metrics/ for good, or a collector that removes the file of another that still runs.
 test_the_working_files_of_a_killed_collector_are_removed_and_those_of_a_live_one_kept() {
   local dead alive
   started_project one-setup
@@ -43,6 +43,7 @@ test_the_working_files_of_a_killed_collector_are_removed_and_those_of_a_live_one
   alive=$!
   printf 'x\n' >"$METRICS/tasks.csv.new.$dead"
   printf 'x\n' >"$METRICS/start.new.$dead"
+  printf 'x\n' >"$METRICS/tasks.csv.old.$dead"
   printf 'x\n' >"$METRICS/tasks.csv.new.$alive"
   printf 'x\n' >"$METRICS/notes.new.synthetic"
   collected

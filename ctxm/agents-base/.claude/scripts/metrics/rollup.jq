@@ -40,14 +40,23 @@ def findings: {
   nits_by_round: (in_order | map(.nits) | join("+"))
 };
 
-def reviews_of(keys): with_findings | group_by(keys) | map({role: .[0].role, task: .[0].task} + findings);
+# The reports of one role (the input: lines of one group), added up.
+def review_of: {role: .[0].role} + findings;
+
+def reviews_by_role: with_findings | group_by(.role) | map(review_of);
+
+def reviews_by_item_and_role: with_findings | group_by([.task, .role]) | map({task: .[0].task} + review_of);
 
 def defects_at_tests: map(select(.role == "release-tester")) | with_findings | total("blocking");
 
 def item_of($commits): {rounds: rounds} + costs + $commits;
 
-def commits_of($task):
-  [.commits[] | select(.task == $task) | {commits, added, deleted}] | first // {commits: 0, added: 0, deleted: 0};
+# An item with no commit in the project's repository has `unknown` commits, never 0: the collector cannot tell an
+# item that committed nothing from one whose commits are in another repository (a plan may hold the items of
+# another repository, as the library's items in a project's plan).
+def no_known_commits: {commits: unknown, added: unknown, deleted: unknown};
+
+def commits_of($task): [.commits[] | select(.task == $task) | {commits, added, deleted}] | first // no_known_commits;
 
 def items_of($mine):
   . as $source
@@ -96,8 +105,8 @@ def rollup_of($plan):
       setups: ($mine | setups_of),
       items: ($source | items_of($mine)),
       total: ($mine | costs),
-      review_roles: ($mine | reviews_of(.role)),
-      review_items: ($mine | reviews_of([.task, .role])),
+      review_roles: ($mine | reviews_by_role),
+      review_items: ($mine | reviews_by_item_and_role),
       defects_at_tests: ($mine | defects_at_tests),
       candidates: ($source | candidates_of($plan.name)),
       period: $period,

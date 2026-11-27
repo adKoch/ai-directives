@@ -11,7 +11,7 @@ readonly RESUMED_SESSION=dddddddd-0000-4000-8000-000000000003
 # The keys of a record or a `.meta.json` whose values are ids, times, fixed words, model names or numbers. The
 # value of any other key is free text.
 readonly STRUCTURAL_KEYS='["type", "subtype", "uuid", "sessionId", "agentId", "timestamp", "cwd", "requestId", "id",
-  "role", "model", "trigger", "agentType"]'
+  "role", "model", "trigger", "agentType", "name"]'
 
 # Builds a shape of the fixtures into ./<shape>, as its files stand at the minute (default: when all is written).
 build() {

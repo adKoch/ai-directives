@@ -2,17 +2,17 @@
 # candidates. Each is read from text of the project's own (a plan, git's log, a file name) and gives numbers, task
 # names and versions that pass format.jq, nothing else. Pure; needs format.jq. Read from the bottom up.
 
-# A plan file is read whole; a longer one is left out.
-def plan_limit_bytes: 4194304;
+# A plan's item headings: an item's bold title, then its task name in backticks in parentheses, as
+# **1A standard-worker: the title** (task `REQ-900-1A-first-example`) or **T-1 release-tester** (`v0.8-T-1`).
+def item_task_names: [scan("\\*\\* \\((?:task\\s+)?`([^`\\n]{1,80})`") | .[0] | select(is_task_name)] | unique;
 
-def task_names_between_backticks: [scan("`([^`\\n]{1,80})`") | .[0] | select(is_task_name)] | unique;
-
-# The facts of a plan file (the input is its text): its name, when the plan file was first committed (seconds, or
-# null), and the task names between backticks in its text: the plan's items. A plan with another name or too long
-# is left out.
+# The facts of a plan file (the input is its text, no longer than plans.sh lets through): its name, when the plan
+# file was first committed (seconds, or null), and the task names of its item headings: the plan's items. A task
+# named anywhere else in the text (a dependency, a done list) is no item of it. A plan with another name is left
+# out.
 def plan_facts($name; $first):
-  if ($name | is_plan_name) and utf8bytelength <= plan_limit_bytes
-  then {kind: "plan", name: $name, first_commit: $first, items: task_names_between_backticks}
+  if ($name | is_plan_name)
+  then {kind: "plan", name: $name, first_commit: $first, items: item_task_names}
   else {kind: "plan", name: null}
   end;
 

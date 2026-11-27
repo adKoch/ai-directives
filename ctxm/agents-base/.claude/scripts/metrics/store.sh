@@ -2,14 +2,20 @@
 # The collector's only place to write: ctxm/metrics/ of the project.
 #   ctxm/metrics/start      where the project's metrics start (one time, written by the first collection)
 #   ctxm/metrics/tasks.csv  the lines
-# A file is replaced whole, by a rename: an interrupted collection leaves what was there. Nothing here follows a
-# symbolic link: a link on the way would let a write land outside the project.
+#   ctxm/metrics/<plan>.md  the roll-ups
+# A collection's files are written all or nothing: each is prepared beside its place, the old one kept under a
+# second name, then all are renamed into place; a collection stopped or failing before the last rename puts back
+# every file it had replaced (end_collector). Nothing here follows a symbolic link: a link on the way would let a
+# write land outside the project.
 # Sourced by collect-metrics.sh; needs PROJECT (project.sh) and refuse (tools.sh).
 
 readonly METRICS_FOLDER=ctxm/metrics
 readonly START_FILE=$METRICS_FOLDER/start TASKS_FILE=$METRICS_FOLDER/tasks.csv
-# The files a write is prepared in, each with the file it replaces; empty when no write is under way.
-declare -A PREPARED_FILES=()
+# The places a write is prepared for, in the order they are renamed into; empty when no write is under way.
+PREPARED_PLACES=()
+# The places whose rename has begun, so whose old file must be put back if the write stops before its end. A place
+# is named here before its rename: a stop right after the rename returns still finds it.
+RENAMED_PLACES=()
 
 # Ends the collector when a symbolic link, or anything but a folder or a plain file, stands where the collector
 # reads and writes.
@@ -38,6 +44,7 @@ stored_start() {
 
 # Replaces a file of ctxm/metrics/ with the content, whole or not at all.
 store() {
+  remove_abandoned_files
   prepare_file "$1" "$2"
   publish_prepared
 }
@@ -45,21 +52,40 @@ store() {
 # Prepares the new content of a file under a name of this collector's own, so a second collector at the same time
 # can neither remove it nor rename it into place. Nothing is replaced before publish_prepared.
 prepare_file() {
-  local file=$1 content=$2 prepared="$PROJECT/$1.new.$$"
+  local place="$PROJECT/$1"
   mkdir -p -- "$PROJECT/$METRICS_FOLDER"
-  remove_abandoned_files
-  rm -f -- "$prepared"
-  PREPARED_FILES["$prepared"]="$PROJECT/$file"
-  write_new_file "$prepared" "$content"
+  rm -f -- "$(prepared_name "$place")"
+  PREPARED_PLACES+=("$place")
+  write_new_file "$(prepared_name "$place")" "$2"
 }
 
-# Renames every prepared file into place: the last step of a collection, so a collection that fails before it
-# replaces nothing.
+prepared_name() {
+  printf '%s.new.%s\n' "$1" "$$"
+}
+
+kept_name() {
+  printf '%s.old.%s\n' "$1" "$$"
+}
+
+# Renames every prepared file into place, the last step of a collection: the old files are kept first, and dropped
+# only once every rename is done.
 publish_prepared() {
-  local prepared
-  for prepared in "${!PREPARED_FILES[@]}"; do
-    mv -f -- "$prepared" "${PREPARED_FILES[$prepared]}"
-    unset "PREPARED_FILES[$prepared]"
+  local place
+  keep_old_files
+  for place in "${PREPARED_PLACES[@]}"; do
+    RENAMED_PLACES+=("$place")
+    mv -f -T -- "$(prepared_name "$place")" "$place"
+  done
+  RENAMED_PLACES=()
+  discard_written_files
+}
+
+# Keeps each file a write replaces under a second name (a hard link: the same bytes, nothing copied).
+keep_old_files() {
+  local place
+  for place in "${PREPARED_PLACES[@]}"; do
+    rm -f -- "$(kept_name "$place")"
+    [[ ! -e "$place" ]] || ln -P -T -- "$place" "$(kept_name "$place")"
   done
 }
 
@@ -69,24 +95,43 @@ write_new_file() (
   printf '%s\n' "$2" >"$1"
 )
 
-# Removes the files a collector that was killed left (`<file>.new.<its process id>`) when that process is gone; the
-# files of a collector that still runs are never touched.
+# Removes the files a collector that was killed left (`<file>.new.<its process id>`, `<file>.old.<its process id>`)
+# when that process is gone; the files of a collector that still runs are never touched. Called once per write,
+# before its first file is prepared.
 remove_abandoned_files() (
   local file process
   shopt -s nullglob
-  for file in "$PROJECT/$METRICS_FOLDER"/*.new.*; do
-    process="${file##*.new.}"
+  for file in "$PROJECT/$METRICS_FOLDER"/*.new.* "$PROJECT/$METRICS_FOLDER"/*.old.*; do
+    process="${file##*.}"
     [[ "$process" =~ ^[0-9]+$ ]] || continue
     kill -0 "$process" 2>/dev/null || rm -f -- "$file"
   done
 )
 
-# Removes the files of a write that did not reach its rename; collect-metrics.sh calls it when the collector ends.
-discard_prepared_files() {
-  local prepared
-  for prepared in "${!PREPARED_FILES[@]}"; do
-    rm -f -- "$prepared"
+# Puts back the old file of every place a stopped write had begun to rename (unless the rename never happened, so
+# the place is still its old file), and removes the new file of a place that had none (a folder put there meanwhile
+# is left); collect-metrics.sh calls it when the collector ends. Fails when a file could not be put back.
+restore_renamed_files() {
+  local place kept failed=0
+  for place in "${RENAMED_PLACES[@]}"; do
+    kept="$(kept_name "$place")"
+    if [[ -e "$kept" ]]; then
+      [[ "$kept" -ef "$place" ]] || mv -f -T -- "$kept" "$place" || failed=1
+    elif [[ ! -d "$place" ]]; then
+      rm -f -- "$place" || failed=1
+    fi
   done
+  RENAMED_PLACES=()
+  return "$failed"
+}
+
+# Removes this collector's working files: the prepared files a write did not rename, and the old files it kept.
+discard_written_files() {
+  local place
+  for place in "${PREPARED_PLACES[@]}"; do
+    rm -f -- "$(prepared_name "$place")" "$(kept_name "$place")"
+  done
+  PREPARED_PLACES=()
 }
 
 # Ends the collector when a roll-up's place is a symbolic link or anything but a plain file: a write there would

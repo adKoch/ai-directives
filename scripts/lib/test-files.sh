@@ -17,6 +17,7 @@ readonly TEST_FILES=(
   tests/metrics/collector/text.test.sh
   tests/metrics/rollup/figures.test.sh
   tests/metrics/rollup/refusals.test.sh
+  tests/metrics/rollup/writing.test.sh
   tests/metrics/support/transcripts.test.sh
 )
 

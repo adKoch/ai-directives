@@ -58,11 +58,25 @@ test_a_lines_file_under_an_earlier_header_moves_to_the_new_header_keeping_its_li
   cp old.csv "$METRICS/tasks.csv"
   collected
   header="$(names_under Columns)"
-  assert_prints "$header" head -n 1 "$METRICS/tasks.csv"
+  { printf '%s\n' "$header"; tail -n +2 old.csv | sed 's/$/,unknown,unknown/'; } >moved.csv
+  assert_starts_with_content "$METRICS/tasks.csv" moved.csv
   assert_prints 'unknown,unknown' line_fields a0000000000000001 blocking nits
   assert_prints 'none,none' line_fields aaaaaaaa-0000-4000-8000-000000000001 blocking nits
-  assert_prints 'REQ-900-1A-first-example,inspector,60,600' \
-    line_fields a0000000000000001 task role input_tokens output_tokens
+}
+
+# catches: a header cut after a number of columns no header of the format ever had taken for an earlier header.
+test_a_lines_file_under_a_header_that_never_was_is_refused() {
+  started_project one-setup
+  transcripts finished-run
+  collected
+  cut -d, -f1-18 "$METRICS/tasks.csv" >"$METRICS/tasks.csv.cut"
+  mv "$METRICS/tasks.csv.cut" "$METRICS/tasks.csv"
+  cp "$METRICS/tasks.csv" before.csv
+  collect
+  assert_prints 1 cat status
+  assert_prints 'error: ctxm/metrics/tasks.csv does not start with the header of the format; restore it from git;'\
+' nothing was written' cat stderr
+  assert_same_content "$METRICS/tasks.csv" before.csv
 }
 
 run_tests

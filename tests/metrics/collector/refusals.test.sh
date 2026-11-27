@@ -5,7 +5,7 @@
 source "$(dirname "${BASH_SOURCE[0]}")/collecting.sh"
 
 # What the collector calls, without jq.
-readonly TOOLS_WITHOUT_JQ=(bash git mkdir mv rm)
+readonly TOOLS_WITHOUT_JQ=(bash git ln mkdir mv rm wc)
 readonly ONLY_THE_START='?? ctxm/metrics/start'
 
 # Fails unless the last run of the collector was refused with that line (given in parts, joined by spaces) and
@@ -31,7 +31,7 @@ test_without_jq_the_collector_names_it_and_writes_nothing() {
   done
   PATH="$PWD/tools" collect
   assert_refused '' "collect-metrics.sh needs jq: not on the PATH; the project's toolchain must provide" \
-    "bash 4.4 or later, jq, git, mkdir, mv and rm"
+    "bash 4.4 or later, jq, git, ln, mkdir, mv, rm and wc"
 }
 
 # catches: a write that follows a link out of the project: the start record or the lines would land wherever

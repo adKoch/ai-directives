@@ -6,7 +6,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/rolling.sh"
 
 readonly LEFT_OUT_PLANS="note: plan files left out: a name, a size or a kind of file that is no plan's"
 
-readonly MALFORMED_FINDINGS='note: runs written without counts: their last line opens with Findings: and is no line of the format'
+readonly MALFORMED_FINDINGS='note: runs written without counts: their last line opens with Findings: and is no line'\
+' of the format'
 
 # Builds a project that has the plan and the runs of reviewed-items, not yet collected.
 project_with_the_plan() {
@@ -111,33 +112,32 @@ test_a_findings_line_with_text_or_extra_fields_counts_and_copies_nothing() {
 
 # catches: text of a plan (a heading, a formula between backticks, a name that is no task name) in the roll-up.
 test_text_in_a_plan_never_reaches_the_rollup() {
+  local more
   project_with_the_plan
-  commit_file "$PLAN_DATE" "synthetic-text more" ctxm/plans/REQ-900.md \
-    "$PLAN_TEXT"$'\n# synthetic-text heading\n`=HYPERLINK("x")` `REQ-900-1A-first-example, secret` `../REQ-900-1A-x`'
+  # shellcheck disable=SC2016 # the backticks are the plan's own
+  more='# synthetic-text heading
+**X** (`=HYPERLINK("x")`) `REQ-900-1A-first-example, secret` **Y** (task `../REQ-900-1A-x`)'
+  put_file ctxm/plans/REQ-900.md "$PLAN_TEXT"$'\n'"$more"
+  commit_all "$PLAN_DATE" "synthetic-text more"
   collected
   assert_no_text_got_out
   assert_prints true jq --raw-input --slurp 'test("HYPERLINK|secret|[.][.]/") | not' "$METRICS/REQ-900.md"
 }
 
-# catches: a plan file of any size read whole: a huge file would be slurped into memory.
-test_a_plan_over_the_size_limit_is_left_out() {
+# catches: a plan file of any size read before its size is known: a huge file would be slurped into memory.
+test_a_plan_over_the_size_limit_is_left_out_unread() {
   project_with_the_plan
   head -c 4300000 /dev/zero | tr '\0' 'a' >project/ctxm/plans/REQ-902.md
-  collected
+  mkdir tools
+  ln -s "$COLLECTOR_TESTS/standins/recording-jq.sh" tools/jq
+  PATH="$PWD/tools:$PATH" collect
+  assert_prints 0 cat status
   assert_prints 'REQ-900.md
 start
 tasks.csv' ls "$METRICS"
   assert_prints "$LEFT_OUT_PLANS: 1" grep 'plan files' stderr
-}
-
-# catches: roll-ups half written: a collection stopped before its renames leaves neither a roll-up nor new lines.
-test_an_interrupted_collection_writes_no_rollup_and_no_lines() {
-  project_with_the_plan
-  mkdir tools
-  ln -s "$COLLECTOR_TESTS/standins/interrupting-mv.sh" tools/mv
-  PATH="$PWD/tools:$PATH" collect
-  assert_prints 1 cat status
-  assert_prints start ls "$METRICS"
+  assert_prints 1 grep --count --fixed-strings plans/REQ-900.md tools/jq-files
+  assert_prints 0 awk '/REQ-902/ { read++ } END { print read + 0 }' tools/jq-files
 }
 
 # catches: a shape of these tests whose free text reaches the roll-up.

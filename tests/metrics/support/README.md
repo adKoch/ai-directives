@@ -35,7 +35,7 @@ makers by hand, with a folder in the task's workspace.
 | `sessions[].renames_copies` | optional, `true`: the copy of the other session's own records names this session (`sessionId`), as Claude Code writes some copies; the copied runs are unchanged |
 | `sessions[].events[]`, `runs[].events[]` | in time order, each with its `minute` and one of the kinds below; at most 999999 per session or run |
 | `{"prompt": <text>}` | one user record. A run's first prompt carries the task name |
-| `{"call": <message id>, "usage": {…}, "records": <n>, "earlier_records_output_tokens": <n>}` | one API call, written as `records` assistant records (default 1, at most 100) under one message id. Each holds `usage`; with the last key, the records before the last hold that number as their output. With `"report_end": <text>`, every record's text ends with that line, as a run's report ends with its Findings line |
+| `{"call": <message id>, "usage": {…}, "records": <n>, "earlier_records_output_tokens": <n>}` | one API call, written as `records` assistant records (default 1, at most 100) under one message id. Each holds `usage`; with the last key, the records before the last hold that number as their output. With `"report_end": <text>`, every record's text ends with that line, as a run's report ends with its Findings line. With `"handback_end": <text>`, every record also holds a `SubagentHandback` call whose `input.message` ends with that line, as a run hands its report back |
 | `{"compaction": {"trigger": …, "preTokens": …}}` | one `compact_boundary` record |
 | `sessions[].runs[]`: `agent`, `role`, `model`, `description`, `finished` | a subagent run: `subagents/agent-<agent>.jsonl` and `.meta.json`. `finished` is the minute the run finishes; without it the run never does |
 
@@ -83,7 +83,7 @@ them, by key names only.
 | Layout | `<session>.jsonl`, `<session>/subagents/agent-<agent>.jsonl`, `agent-<agent>.meta.json` | plan |
 | Every record | `type`, `uuid`, `timestamp` (with milliseconds), `sessionId`, `isSidechain`, `cwd`; in a run `agentId` | known |
 | Prompt | `type: user`, `message.role`, `message.content` (a string) | known |
-| API call | `type: assistant`, `requestId`, `message.id`, `.type`, `.role`, `.model`, `.content[].type`, `.content[].text`, `message.usage.input_tokens`, `.output_tokens`, `.cache_creation_input_tokens`, `.cache_read_input_tokens`; several records per `message.id` | plan (several records per id), known (names) |
+| API call | `type: assistant`, `requestId`, `message.id`, `.type`, `.role`, `.model`, `.content[].type`, `.content[].text`; a handback block `.content[]` with `type: tool_use`, `id`, `name: SubagentHandback`, `input.message`; `message.usage.input_tokens`, `.output_tokens`, `.cache_creation_input_tokens`, `.cache_read_input_tokens`; several records per `message.id` | plan (several records per id), known (names) |
 | Compaction | `type: system`, `subtype: compact_boundary`, `content`, `compactMetadata.trigger`, `.preTokens` | plan (`compact_boundary`), known (the rest) |
 | Session opening | `type: custom-title` with `customTitle`, `type: agent-name` with `agentName`, both with `sessionId`, neither with `uuid` or `timestamp` | plan (the two kinds), known (names) |
 | `.meta.json` | `agentType`, `model`, `finished`, `description` | plan |

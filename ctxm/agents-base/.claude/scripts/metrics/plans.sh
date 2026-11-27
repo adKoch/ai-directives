@@ -1,11 +1,13 @@
 # shellcheck shell=bash
 # What the collector reads of the project besides its transcripts, for the roll-ups: the plans of ctxm/plans/ (the
-# task names in their text and the time each file was first committed), the commits whose subject names a task
-# (their number and size), and the release candidates of ctxm/releases/ (the names of the files). Each becomes
-# numbers, task names and versions (rollup_facts.jq); no text is printed, kept or passed on. Read-only.
+# task names of their item headings and the time each file was first committed), the commits whose subject names
+# a task (their number and size), and the release candidates of ctxm/releases/ (the names of the files). Each
+# becomes numbers, task names and versions (rollup_facts.jq); no text is printed, kept or passed on. Read-only.
 # Sourced by collect-metrics.sh; needs PROJECT, project_git (project.sh), refuse (tools.sh), metrics_jq (program.sh).
 
 readonly PLANS_FOLDER=ctxm/plans RELEASES_FOLDER=ctxm/releases
+# A plan file is read whole, so a longer one is left out.
+readonly PLAN_LIMIT_BYTES=4194304
 
 # Ends the collector when a symbolic link stands where the plans or the release candidates are read: the collector
 # reads only files that are in the project.
@@ -24,18 +26,27 @@ rollup_facts() {
   candidate_facts
 }
 
-# Prints the fact of each plan file of ctxm/plans/. A file that is no plain file is a plan left out.
+# Prints the fact of each plan file of ctxm/plans/. A file that is no plain file, or longer than the limit, is a
+# plan left out, and is never read.
 plan_facts() (
   local file
   shopt -s nullglob
   for file in "$PROJECT/$PLANS_FOLDER"/*.md; do
-    if [[ -f "$file" && ! -L "$file" ]]; then
+    if [[ -f "$file" && ! -L "$file" ]] && is_within_plan_limit "$file"; then
       one_plan_fact "$file"
     else
       printf '{"kind":"plan","name":null}\n'
     fi
   done
 )
+
+# Answers whether a file is no longer than a plan may be, from its size alone: wc counts a plain file's bytes
+# without reading them.
+is_within_plan_limit() {
+  local size
+  size="$(wc -c <"$1")"
+  ((size <= PLAN_LIMIT_BYTES))
+}
 
 # Prints the fact of one plan file; the plan's name is the file's name without `.md`.
 one_plan_fact() {
