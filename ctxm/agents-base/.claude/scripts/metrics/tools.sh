@@ -1,12 +1,16 @@
 # shellcheck shell=bash
 # The collector's tool requirement, and its refusal. The templates ship no toolchain: the project's own provides
-# bash, jq, git and the three coreutils commands the collector calls. Sourced first by collect-metrics.sh, which
+# bash, jq, git and the five coreutils commands the collector calls. Sourced first by collect-metrics.sh, which
 # calls require_tools before it reads anything.
 
-readonly REQUIRED_TOOLS=(jq git mkdir mv rm)
+readonly REQUIRED_TOOLS=(jq git ln mkdir mv rm wc)
 # The status of a refusal inside the collector, so that its end tells a refusal (its line already said) from a step
-# that failed; the collector itself exits 1 for both.
-readonly REFUSED_STATUS=3
+# that failed; the collector itself exits 1 for both. Never a status a tool of the collector gives for its own
+# failure (jq exits 1 to 5, git 128): a jq program that does not compile (3) would pass for a refusal.
+readonly REFUSED_STATUS=70
+# The status of a collector stopped by a signal (TERM, INT, HUP), for the same reason.
+# shellcheck disable=SC2034 # read by collect-metrics.sh and telling.sh
+readonly INTERRUPTED_STATUS=71
 
 # Ends the collector with one `error:` line saying why.
 refuse() {

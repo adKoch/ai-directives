@@ -12,6 +12,9 @@ source "$(dirname "${BASH_SOURCE[0]}")/../support/testing.sh"
 # shellcheck disable=SC2034 # read by the test files
 readonly COLLECTOR="$REPO_ROOT/ctxm/agents-base/.claude/scripts/collect-metrics.sh"
 readonly COLLECTOR_TESTS="$REPO_ROOT/tests/metrics/collector"
+# Where a scenario file is looked for before the fixtures: a test folder with shapes or histories of its own sets
+# SCENARIOS to itself.
+SCENARIOS="${SCENARIOS:-$COLLECTOR_TESTS}"
 # Minute 0 of every shape and history, unless a test gives another; long before any test runs.
 readonly EPOCH=2026-01-05T09:00:00Z
 # shellcheck disable=SC2034 # read by the test files
@@ -21,20 +24,16 @@ readonly TEXT_MARK=synthetic-text
 # (a GIT_DIR, a HOME with real transcripts) reaches it. Found here, so a test may narrow the PATH.
 readonly EMPTY_ENVIRONMENT=("$(command -v env)" -i)
 
-# Prints the file of a shape or a history: one of this folder's own, or one of the fixtures.
+# Prints the file of a shape or a history: one of the test folder's own (SCENARIOS), one of this folder's, or one of
+# the fixtures, in that order.
 scenario_file() {
-  local kind=$1 name=$2 own
-  case "$kind" in
-    shape) own="$COLLECTOR_TESTS/shapes/$name.json" ;;
-    history) own="$COLLECTOR_TESTS/histories/$name.json" ;;
-  esac
-  if [[ -f "$own" ]]; then
-    printf '%s\n' "$own"
-  elif [[ "$kind" == shape ]]; then
-    printf '%s\n' "$FIXTURES/transcripts/$name.json"
-  else
-    printf '%s\n' "$FIXTURES/projects/$name.json"
-  fi
+  local kind=$1 name=$2 folder fixtures=projects candidate subfolder=histories
+  [[ "$kind" != shape ]] || { fixtures=transcripts; subfolder=shapes; }
+  for folder in "$SCENARIOS" "$COLLECTOR_TESTS"; do
+    candidate="$folder/$subfolder/$name.json"
+    [[ ! -f "$candidate" ]] || { printf '%s\n' "$candidate"; return 0; }
+  done
+  printf '%s\n' "$FIXTURES/$fixtures/$name.json"
 }
 
 # Builds ./project from a history, with minute 0 at the epoch (default: EPOCH). Its metrics have not started.
@@ -59,12 +58,26 @@ transcripts() {
     "${TRANSCRIPTS_EPOCH:-$EPOCH}" "$@"
 }
 
-# Runs the collector with the arguments, the PATH and an empty home. Leaves ./stdout, ./stderr and the exit status
-# in ./status; a test asserts the status, so a refusal is never taken for a collection.
+# Runs the collector with the arguments, the PATH and an empty home, plus the variables the caller names (NAME=value).
+in_collector_environment() {
+  mkdir -p home
+  "${EMPTY_ENVIRONMENT[@]}" PATH="$PATH" HOME="$PWD/home" "$@"
+}
+
+# Runs the collector with the arguments. Leaves ./stdout, ./stderr and the exit status in ./status; a test asserts
+# the status, so a refusal is never taken for a collection.
 run_collector() {
   local status=0
-  mkdir -p home
-  "${EMPTY_ENVIRONMENT[@]}" PATH="$PATH" HOME="$PWD/home" "$COLLECTOR" "$@" >stdout 2>stderr || status=$?
+  in_collector_environment "$COLLECTOR" "$@" >stdout 2>stderr || status=$?
+  printf '%s\n' "$status" >status
+}
+
+# Runs the collector with stdout a pipe whose reader has gone (a closed descriptor is another case): ./stderr and
+# ./status as run_collector leaves them, ./stdout empty.
+run_collector_into_a_closed_pipe() {
+  local status=0
+  : >stdout
+  in_collector_environment "$COLLECTOR" "$@" 2>stderr | true || status=${PIPESTATUS[0]}
   printf '%s\n' "$status" >status
 }
 

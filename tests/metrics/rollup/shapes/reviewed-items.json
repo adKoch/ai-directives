@@ -1,0 +1,203 @@
+{
+  "about": "One session and the runs of two plan items and a final test. Every run makes one call (usage 1, 10, 100, 1000). 1A: a worker, an inspector and a reviewer find 2+1 and 1+0, a fix, a second inspector finds 0+3. 1B: one inspector finds 0+0. The release-tester of the test item finds 1+0. The session makes two calls (usage 1, 10, 100, 1000 each).",
+  "sessions": [
+    {
+      "id": "aaaaaaaa-0000-4000-8000-000000000001",
+      "model": "claude-synthetic-large",
+      "events": [
+        {
+          "minute": 0,
+          "prompt": "synthetic-text the owner asks"
+        },
+        {
+          "minute": 1,
+          "call": "msg_main_01",
+          "usage": {
+            "input_tokens": 1,
+            "output_tokens": 10,
+            "cache_creation_input_tokens": 100,
+            "cache_read_input_tokens": 1000
+          }
+        },
+        {
+          "minute": 100,
+          "call": "msg_main_02",
+          "usage": {
+            "input_tokens": 1,
+            "output_tokens": 10,
+            "cache_creation_input_tokens": 100,
+            "cache_read_input_tokens": 1000
+          }
+        }
+      ],
+      "runs": [
+        {
+          "agent": "w0000000000000001",
+          "role": "standard-worker",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text run",
+          "finished": 10,
+          "events": [
+            {
+              "minute": 2,
+              "prompt": "Task: `REQ-900-1A-first-example` synthetic-text the item"
+            },
+            {
+              "minute": 3,
+              "call": "msg_w0000000000000001",
+              "usage": {
+                "input_tokens": 1,
+                "output_tokens": 10,
+                "cache_creation_input_tokens": 100,
+                "cache_read_input_tokens": 1000
+              }
+            }
+          ]
+        },
+        {
+          "agent": "i0000000000000001",
+          "role": "inspector",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text run",
+          "finished": 20,
+          "events": [
+            {
+              "minute": 12,
+              "prompt": "Task: `REQ-900-1A-first-example` synthetic-text the item"
+            },
+            {
+              "minute": 13,
+              "call": "msg_i0000000000000001",
+              "usage": {
+                "input_tokens": 1,
+                "output_tokens": 10,
+                "cache_creation_input_tokens": 100,
+                "cache_read_input_tokens": 1000
+              },
+              "report_end": "Findings: 2 blocking, 1 nits"
+            }
+          ]
+        },
+        {
+          "agent": "r0000000000000001",
+          "role": "reviewer",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text run",
+          "finished": 22,
+          "events": [
+            {
+              "minute": 12,
+              "prompt": "Task: `REQ-900-1A-first-example` synthetic-text the item"
+            },
+            {
+              "minute": 13,
+              "call": "msg_r0000000000000001",
+              "usage": {
+                "input_tokens": 1,
+                "output_tokens": 10,
+                "cache_creation_input_tokens": 100,
+                "cache_read_input_tokens": 1000
+              },
+              "report_end": "Findings: 1 blocking, 0 nits"
+            }
+          ]
+        },
+        {
+          "agent": "p0000000000000001",
+          "role": "problem-solver",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text run",
+          "finished": 30,
+          "events": [
+            {
+              "minute": 24,
+              "prompt": "Task: `REQ-900-1A-first-example` synthetic-text the item"
+            },
+            {
+              "minute": 25,
+              "call": "msg_p0000000000000001",
+              "usage": {
+                "input_tokens": 1,
+                "output_tokens": 10,
+                "cache_creation_input_tokens": 100,
+                "cache_read_input_tokens": 1000
+              }
+            }
+          ]
+        },
+        {
+          "agent": "i0000000000000002",
+          "role": "inspector",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text run",
+          "finished": 40,
+          "events": [
+            {
+              "minute": 32,
+              "prompt": "Task: `REQ-900-1A-first-example` synthetic-text the item"
+            },
+            {
+              "minute": 33,
+              "call": "msg_i0000000000000002",
+              "usage": {
+                "input_tokens": 1,
+                "output_tokens": 10,
+                "cache_creation_input_tokens": 100,
+                "cache_read_input_tokens": 1000
+              },
+              "report_end": "Findings: 0 blocking, 3 nits"
+            }
+          ]
+        },
+        {
+          "agent": "i0000000000000003",
+          "role": "inspector",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text run",
+          "finished": 50,
+          "events": [
+            {
+              "minute": 42,
+              "prompt": "Task: `REQ-900-1B-second-example` synthetic-text the item"
+            },
+            {
+              "minute": 43,
+              "call": "msg_i0000000000000003",
+              "usage": {
+                "input_tokens": 1,
+                "output_tokens": 10,
+                "cache_creation_input_tokens": 100,
+                "cache_read_input_tokens": 1000
+              },
+              "report_end": "Findings: 0 blocking, 0 nits"
+            }
+          ]
+        },
+        {
+          "agent": "t0000000000000001",
+          "role": "release-tester",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text run",
+          "finished": 60,
+          "events": [
+            {
+              "minute": 52,
+              "prompt": "Task: `REQ-900-T1-final-test` synthetic-text the item"
+            },
+            {
+              "minute": 53,
+              "call": "msg_t0000000000000001",
+              "usage": {
+                "input_tokens": 1,
+                "output_tokens": 10,
+                "cache_creation_input_tokens": 100,
+                "cache_read_input_tokens": 1000
+              },
+              "report_end": "Findings: 1 blocking, 0 nits"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

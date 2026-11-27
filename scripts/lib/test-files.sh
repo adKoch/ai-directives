@@ -13,7 +13,11 @@ readonly TEST_FILES=(
   tests/metrics/collector/runs.test.sh
   tests/metrics/collector/sessions.test.sh
   tests/metrics/collector/start.test.sh
+  tests/metrics/collector/store.test.sh
   tests/metrics/collector/text.test.sh
+  tests/metrics/rollup/figures.test.sh
+  tests/metrics/rollup/refusals.test.sh
+  tests/metrics/rollup/writing.test.sh
   tests/metrics/support/transcripts.test.sh
 )
 

@@ -14,15 +14,30 @@ def opening_records:
 
 def prompt_record: {type: "user", message: {role: "user", content: .prompt}};
 
-def assistant_record($message; $model; $usage): {
+# The text of a call's records: free text, and when the shape gives `report_end`, that as the last line (a report ends
+# with it).
+def reply_text: if has("report_end") then "\(text_mark) report\n\(.report_end)" else "\(text_mark) reply" end;
+
+# The call by which a run hands its report back, when the shape gives `handback_end`: the report is the call's
+# `message`, ending with that line.
+def handback_block: {
+  type: "tool_use",
+  id: "toolu_\(.call)",
+  name: "SubagentHandback",
+  input: {message: "\(text_mark) handed back\n\(.handback_end)"}
+};
+
+def reply_blocks: [{type: "text", text: reply_text}] + if has("handback_end") then [handback_block] else [] end;
+
+def assistant_record($call; $model; $usage): {
   type: "assistant",
-  requestId: "req_\($message)",
+  requestId: "req_\($call.call)",
   message: {
-    id: $message,
+    id: $call.call,
     type: "message",
     role: "assistant",
     model: $model,
-    content: [{type: "text", text: "\(text_mark) reply"}],
+    content: ($call | reply_blocks),
     usage: $usage
   }
 };
@@ -40,7 +55,7 @@ def record_usages:
 def call_records($model):
   . as $call
   | record_usages
-  | assistant_record($call.call; $model; .);
+  | assistant_record($call; $model; .);
 
 def compaction_record: {
   type: "system",

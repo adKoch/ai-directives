@@ -8,7 +8,12 @@ def note_texts: [
   ["unplain", "runs and parts of main sessions with a role or a model that is no plain word, not written"],
   ["open", "main sessions with a record in the last \(quiet_seconds / 60) minutes, written once they are quiet"],
   ["before_start", "runs and main sessions that ended before the project's metrics start, never written"],
-  ["no_setup", "runs and parts of main sessions at a commit without .ctxm/, not written"]
+  ["no_setup", "runs and parts of main sessions at a commit without .ctxm/, not written"],
+  ["left_out_plans", "plan files left out: a name, a size or a kind of file that is no plan's"],
+  [
+    "malformed_findings",
+    "runs written without counts: their last line opens with Findings: and is no line of the format"
+  ]
 ];
 
 # The notes of a collection, from how many times each reason occurred (the input), in the order above.

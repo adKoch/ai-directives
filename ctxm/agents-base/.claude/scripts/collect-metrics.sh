@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
 # Collects a project's metrics: reads Claude Code's transcripts of the project and adds to ctxm/metrics/tasks.csv
 # one line per finished agent run and per closed main session, each with its token sums and the setup that did
-# the work. The first collection only records where the project's metrics start (ctxm/metrics/start); what ended
-# before it is never collected. Main runs it after each merge.
+# the work, and rewrites the roll-up (ctxm/metrics/<plan>.md) of each plan of ctxm/plans/ that has lines. The first
+# collection only records where the project's metrics start (ctxm/metrics/start); what ended before it is never
+# collected. Main runs it after each merge.
 # Usage: collect-metrics.sh [--dry-run] [--project <folder>] [--transcripts <folder>]
 #   --dry-run               print what a collection would add (counts only) and write nothing
 #   --project <folder>      the project's main checkout (default: the current folder)
 #   --transcripts <folder>  where Claude Code keeps the project's sessions (default: its folder for the project
 #                           under ~/.claude/projects/)
-# It writes only ctxm/metrics/, numbers and checked names only: no prompt, file or report text. A second
-# collection adds nothing; an interrupted one writes nothing.
-# Prints the result on stdout (how many lines), and on stderr a count for each reason a run or a session was not
-# written. Exits 0 when the collection is done (a closed stdout loses only the result), 1 when it is refused or a
-# step fails (one `error:` line; nothing written).
+# It writes only ctxm/metrics/, numbers and checked names only: no prompt, file, plan or report text. A second
+# collection adds nothing and rewrites the same roll-ups; an interrupted one writes nothing.
+# Prints the result on stdout (how many lines, how many roll-ups), and on stderr a count for each reason a run or a
+# session was not written. Exits 0 when the collection is done (a closed stdout loses only the result), 1 when it
+# is refused, interrupted before its last rename or a step fails (one `error:` line; nothing written, unless a
+# replaced file could not be put back: the line says which and where its old bytes are).
 # Needs the tools metrics/tools.sh names, from the project's own toolchain, and checks for them first.
 # The format and the rules: docs/metrics-format.md of the template library.
 set -euo pipefail
@@ -29,9 +31,15 @@ source "$METRICS_SCRIPTS/program.sh"
 source "$METRICS_SCRIPTS/project.sh"
 # shellcheck source=metrics/transcripts.sh
 source "$METRICS_SCRIPTS/transcripts.sh"
+# shellcheck source=metrics/plans.sh
+source "$METRICS_SCRIPTS/plans.sh"
 # shellcheck source=metrics/store.sh
 source "$METRICS_SCRIPTS/store.sh"
+# shellcheck source=metrics/telling.sh
+source "$METRICS_SCRIPTS/telling.sh"
 
+# The rules of a collection, each after the ones it needs (program.sh).
+readonly PLAN_MODULES="format events report holdings rollup rollup_text lines"
 readonly USAGE='usage: collect-metrics.sh [--dry-run] [--project <folder>] [--transcripts <folder>]'
 DRY_RUN=no
 PROJECT_FOLDER=.
@@ -45,9 +53,11 @@ main() {
   forget_inherited_repository
   find_project "$PROJECT_FOLDER"
   refuse_unsafe_store
+  refuse_unsettled_files
+  refuse_linked_sources
   find_transcripts
   name_project
-  trap 'refuse "the collection was interrupted; ctxm/metrics/ holds no half-written file"' TERM INT HUP
+  trap 'exit "$INTERRUPTED_STATUS"' TERM INT HUP
   if has_stored "$START_FILE"; then
     collect
   else
@@ -55,14 +65,15 @@ main() {
   fi
 }
 
-# Runs when the collector ends, however it ends: an unfinished write is removed, and a step that failed without
-# a refusal of its own (a tool that stopped, a full disk) gets the one line a refusal has; both end with 1.
+# Runs when the collector ends, however it ends: a write that did not reach its end is undone, with no further
+# signal stopping that, and the end gets its one `error:` line (a refusal has printed its own); all end with 1.
 end_collector() {
   local status=$?
-  discard_prepared_file
+  trap '' TERM INT HUP
+  restore_renamed_files
+  discard_written_files
   ((status == 0)) && return
-  ((status == REFUSED_STATUS)) \
-    || printf 'error: a step of the collection failed, see above; ctxm/metrics/ holds no half-written file\n' >&2
+  tell_stop "$status"
   exit 1
 }
 
@@ -106,7 +117,8 @@ start_metrics() {
   fi
 }
 
-# A later collection: adds the lines of what ended since the start and has no line yet.
+# A later collection: adds the lines of what ended since the start and has no line yet, and rewrites the roll-up
+# of each plan of ctxm/plans/ that has lines.
 collect() {
   local plan refusal
   plan="$(collection_plan)"
@@ -114,16 +126,30 @@ collect() {
   [[ -z "$refusal" ]] || refuse "$refusal; nothing was written"
   plan_part '.notes[] | "note: \(.)"' "$plan" >&2
   if [[ "$DRY_RUN" == yes ]]; then
-    tell "$TASKS_FILE: lines to add: $(plan_part .result "$plan"); dry run, nothing written"
+    tell_planned "$plan"
   else
-    store_added_lines "$plan"
-    tell "$TASKS_FILE: lines added: $(plan_part .result "$plan")"
+    store_collection "$plan"
+    tell_stored "$plan"
   fi
 }
 
-store_added_lines() {
-  local plan=$1
-  [[ "$(plan_part .added "$plan")" == 0 ]] || store "$TASKS_FILE" "$(plan_part .content "$plan")"
+# Writes the added lines and the roll-ups together, all or nothing (store.sh): every place is checked and every file
+# prepared before the first is renamed, and a stop before the last rename puts the old files back. tasks.csv is
+# renamed last: a kill that cuts the renames off (no trap runs) leaves it old, so its missing lines are found again
+# and the next collection rewrites every roll-up from them.
+store_collection() {
+  local plan=$1 count index name
+  count="$(plan_part '.rollups | length' "$plan")"
+  for ((index = 0; index < count; index++)); do
+    refuse_unsafe_rollup "$(plan_part ".rollups[$index].plan" "$plan")"
+  done
+  remove_abandoned_files
+  for ((index = 0; index < count; index++)); do
+    name="$(plan_part ".rollups[$index].plan" "$plan")"
+    prepare_file "$METRICS_FOLDER/$name.md" "$(plan_part ".rollups[$index].content" "$plan")"
+  done
+  [[ "$(plan_part .added "$plan")" == 0 ]] || prepare_file "$TASKS_FILE" "$(plan_part .content "$plan")"
+  publish_prepared
 }
 
 # Prints the plan of the collection (lines.jq), from the facts of the project and of its transcripts.
@@ -131,17 +157,19 @@ collection_plan() {
   local written=(--arg written '')
   ! has_stored "$TASKS_FILE" || written=(--rawfile written "$PROJECT/$TASKS_FILE")
   # shellcheck disable=SC2016 # $project, $start and $written are jq's
-  collection_facts "$TRANSCRIPTS_FOLDER" | metrics_jq "format events report lines" '
+  collection_facts "$TRANSCRIPTS_FOLDER" | metrics_jq "$PLAN_MODULES" '
     plan({project: $project, now: (now | floor), start: $start, written: $written})
   ' --null-input --compact-output --arg project "$PROJECT_NAME" --arg start "$(stored_start)" "${written[@]}"
 }
 
-# Prints every fact the plan is made from, one JSON object per line: the setups, the sessions, the runs.
+# Prints every fact the plan is made from, one JSON object per line: the setups, the sessions, the runs, and what
+# the roll-ups read (plans.sh).
 collection_facts() {
   local folder=$1
   project_setups
   session_facts "$folder"
   run_facts "$folder" " $(written_agents) "
+  rollup_facts
 }
 
 # Prints the agent ids of the runs that have their line, on one line. A tasks.csv that cannot be read gives none
@@ -150,12 +178,6 @@ written_agents() {
   has_stored "$TASKS_FILE" || return 0
   metrics_jq format '[written_lines[] | select(.role != main_role) | .agent] | join(" ")' \
     --raw-input --slurp --raw-output "$PROJECT/$TASKS_FILE" 2>/dev/null || true
-}
-
-# Prints the result on stdout. The collection is done by then: a closed stdout loses the message, not the work.
-tell() {
-  trap '' PIPE
-  printf '%s\n' "$1" 2>/dev/null || true
 }
 
 # Prints a part of the plan as text.

@@ -1,0 +1,121 @@
+{
+  "about": "One session and three finished runs of one item. h0000000000000001 hands back a report twice (as a resumed run does) and then writes a text, as most real runs do after the call: its report is the second handback, Findings: 2 blocking, 3 nits. h0000000000000002 ends its text with a Findings line, then hands back a report with none: it reports no counts. h0000000000000003 makes no handback (a harness without the tool) and ends its text with Findings: 0 blocking, 4 nits. Each call has usage 1, 10, 100, 1000.",
+  "sessions": [
+    {
+      "id": "aaaaaaaa-0000-4000-8000-000000000001",
+      "model": "claude-synthetic-large",
+      "events": [
+        {
+          "minute": 0,
+          "prompt": "synthetic-text the owner asks"
+        }
+      ],
+      "runs": [
+        {
+          "agent": "h0000000000000001",
+          "role": "inspector",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text run",
+          "finished": 10,
+          "events": [
+            {
+              "minute": 1,
+              "prompt": "Task: `REQ-900-1A-first-example` synthetic-text the item"
+            },
+            {
+              "minute": 2,
+              "call": "msg_h00000000000000010",
+              "usage": {
+                "input_tokens": 1,
+                "output_tokens": 10,
+                "cache_creation_input_tokens": 100,
+                "cache_read_input_tokens": 1000
+              },
+              "handback_end": "Findings: 5 blocking, 5 nits"
+            },
+            {
+              "minute": 3,
+              "call": "msg_h00000000000000011",
+              "usage": {
+                "input_tokens": 1,
+                "output_tokens": 10,
+                "cache_creation_input_tokens": 100,
+                "cache_read_input_tokens": 1000
+              },
+              "handback_end": "Findings: 2 blocking, 3 nits"
+            },
+            {
+              "minute": 4,
+              "call": "msg_h00000000000000012",
+              "usage": {
+                "input_tokens": 1,
+                "output_tokens": 10,
+                "cache_creation_input_tokens": 100,
+                "cache_read_input_tokens": 1000
+              }
+            }
+          ]
+        },
+        {
+          "agent": "h0000000000000002",
+          "role": "reviewer",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text run",
+          "finished": 10,
+          "events": [
+            {
+              "minute": 1,
+              "prompt": "Task: `REQ-900-1A-first-example` synthetic-text the item"
+            },
+            {
+              "minute": 2,
+              "call": "msg_h00000000000000020",
+              "usage": {
+                "input_tokens": 1,
+                "output_tokens": 10,
+                "cache_creation_input_tokens": 100,
+                "cache_read_input_tokens": 1000
+              },
+              "report_end": "Findings: 9 blocking, 9 nits"
+            },
+            {
+              "minute": 3,
+              "call": "msg_h00000000000000021",
+              "usage": {
+                "input_tokens": 1,
+                "output_tokens": 10,
+                "cache_creation_input_tokens": 100,
+                "cache_read_input_tokens": 1000
+              },
+              "handback_end": "synthetic-text no counts"
+            }
+          ]
+        },
+        {
+          "agent": "h0000000000000003",
+          "role": "inspector",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text run",
+          "finished": 10,
+          "events": [
+            {
+              "minute": 1,
+              "prompt": "Task: `REQ-900-1A-first-example` synthetic-text the item"
+            },
+            {
+              "minute": 2,
+              "call": "msg_h00000000000000030",
+              "usage": {
+                "input_tokens": 1,
+                "output_tokens": 10,
+                "cache_creation_input_tokens": 100,
+                "cache_read_input_tokens": 1000
+              },
+              "report_end": "Findings: 0 blocking, 4 nits"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
