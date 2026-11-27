@@ -15,6 +15,9 @@ A5 inspector ∥ reviewer  on A4
 
 Each work item: id, role, what and why (never how), scope, `after:` dependencies, done when.
 
+Write each item's heading as ``**<id> <role>: <title>** (task `<task name>`)``: the roll-ups read an item's task name
+only there, so a task named elsewhere (a dependency, a done list) is no item.
+
 ## Choosing the role
 - `foundation-worker` when the item sets a pattern others will follow, or nothing similar exists.
 - `standard-worker` when an existing pattern or extension note covers it.
