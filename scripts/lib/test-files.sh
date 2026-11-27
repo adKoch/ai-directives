@@ -15,6 +15,10 @@ readonly TEST_FILES=(
   tests/metrics/collector/start.test.sh
   tests/metrics/collector/store.test.sh
   tests/metrics/collector/text.test.sh
+  tests/metrics/compare/help.test.sh
+  tests/metrics/compare/output.test.sh
+  tests/metrics/compare/refusals.test.sh
+  tests/metrics/compare/side-by-side.test.sh
   tests/metrics/rollup/figures.test.sh
   tests/metrics/rollup/refusals.test.sh
   tests/metrics/rollup/writing.test.sh
