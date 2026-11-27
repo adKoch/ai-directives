@@ -45,9 +45,10 @@ def introduction: [
   "",
   "Read by compare-setups.sh from the roll-ups in ctxm/metrics/ of each project given: numbers, times, checked names",
   "and fixed words only. A setup is a project with its templates and roles; a roll-up made under several of them is",
-  "one setup, with a row for each below. `none`: the setup has no such plan or item. `unknown`: the roll-up has no",
-  "source for it. Coverage `partial`: the project's metrics start after the plan's first commit, so what ended before",
-  "the start is in no number of that plan. The rules: docs/compare-setups.md of the template library.",
+  "one setup, with a row for each below. A plan has a column for each setup with a roll-up of it. `none`: the setup",
+  "has no line of that item. `unknown`: the roll-up has no source for it. Coverage `partial`: the project's metrics",
+  "start after the plan's first commit, so what ended before the start is in no number of that plan. The rules:",
+  "docs/compare-setups.md of the template library.",
   ""
 ];
 

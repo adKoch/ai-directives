@@ -2,7 +2,8 @@
 # What the comparison reads of the projects given: the roll-up files of each one's ctxm/metrics/. Every place is
 # checked where it stands before any file is read, and each roll-up becomes a fact for the rules (comparison.jq).
 # Read-only: it writes nothing, anywhere. A place from outside is printed only through `shown`.
-# Sourced by compare-setups.sh; needs PROJECT_FOLDERS (compare-setups.sh) and die (scripts/lib/common.sh).
+# Sourced by compare-setups.sh; needs PROJECT_FOLDERS (compare-setups.sh), comparison_jq (program.sh) and die
+# (scripts/lib/common.sh).
 
 readonly METRICS_FOLDER=ctxm/metrics
 readonly MOST_PROJECTS=8 MOST_ROLLUPS=100
@@ -26,21 +27,25 @@ find_rollups() {
 }
 
 refuse_too_much_to_read() {
-  local file read_bytes=0
+  local file bytes read_bytes=0
   for file in "${ROLLUP_FILES[@]}"; do
-    read_bytes=$((read_bytes + $(file_bytes "$file")))
+    bytes="$(file_bytes "$file")" || refuse_unreadable "$file"
+    read_bytes=$((read_bytes + bytes))
   done
   ((read_bytes <= READ_LIMIT_BYTES)) || die "the roll-ups given hold more than $READ_LIMIT_BYTES bytes together;" \
     "compare fewer projects at once"
 }
 
-# Ends the comparison unless the folder holds a ctxm/metrics/ folder of its own that no collection left unsettled.
+# Ends the comparison unless the folder holds a ctxm/metrics/ folder of its own, open to it, that no collection left
+# unsettled.
 refuse_unsafe_project() {
   local folder=$1 metrics="$1/$METRICS_FOLDER"
   [[ -d "$folder" ]] || refuse_place "$folder" "is no folder; give the folder of a project"
   [[ ! -L "$folder/ctxm" && ! -L "$metrics" ]] || refuse_place "$metrics" "is reached through a symbolic link:" \
     "the comparison reads only a project's own ctxm/metrics/; remove the link"
   [[ -d "$metrics" ]] || refuse_place "$folder" "has no ctxm/metrics/ folder: its metrics have not started"
+  [[ -r "$metrics" && -x "$metrics" ]] || refuse_place "$metrics" "could not be read; let the comparison read it and" \
+    "list its files"
   refuse_unsettled_metrics "$metrics"
 }
 
@@ -63,7 +68,8 @@ find_project_rollups() {
   found=("$metrics"/*.md)
   shopt -u nullglob dotglob
   ((${#found[@]} > 0)) || refuse_place "$metrics" "holds no roll-up: no plan of the project has lines yet"
-  ((${#found[@]} <= MOST_ROLLUPS)) || refuse_place "$metrics" "holds more than $MOST_ROLLUPS roll-ups"
+  ((${#found[@]} <= MOST_ROLLUPS)) || refuse_place "$metrics" "holds more than $MOST_ROLLUPS roll-ups; compare" \
+    "a project with fewer, or move the files that are no roll-up of a plan out of the folder"
   for file in "${found[@]}"; do
     refuse_unsafe_rollup "$file"
     ROLLUP_FILES+=("$file")
@@ -72,14 +78,17 @@ find_project_rollups() {
 }
 
 refuse_unsafe_rollup() {
+  local bytes
   [[ -f "$1" && ! -L "$1" ]] || refuse_place "$1" "is no plain file, so no roll-up; move it out of the folder"
-  (($(file_bytes "$1") <= ROLLUP_LIMIT_BYTES)) || refuse_place "$1" "is larger than a roll-up may be" \
+  bytes="$(file_bytes "$1")" || refuse_unreadable "$1"
+  ((bytes <= ROLLUP_LIMIT_BYTES)) || refuse_place "$1" "is larger than a roll-up may be" \
     "($ROLLUP_LIMIT_BYTES bytes), so it is not read; move it out of the folder"
 }
 
-# Prints a plain file's size: wc counts its bytes without reading them.
+# Prints a plain file's size: wc counts its bytes without reading them. A file that cannot be opened fails it, without
+# bash's own line, which would print the place as it is.
 file_bytes() {
-  wc -c <"$1"
+  { wc -c <"$1"; } 2>/dev/null
 }
 
 # Prints the facts of the rules, one JSON object per line: each project given, then each roll-up with its text.
@@ -87,8 +96,8 @@ rollup_facts() {
   local index
   for index in "${!PROJECT_FOLDERS[@]}"; do
     # shellcheck disable=SC2016 # $project and $shown are jq's
-    jq --null-input --compact-output --argjson project "$index" --arg shown "$(shown "${PROJECT_FOLDERS[index]}")" \
-      '{kind: "project", project: $project, shown: $shown}'
+    comparison_jq '' '{kind: "project", project: $project, shown: $shown}' --null-input --compact-output \
+      --argjson project "$index" --arg shown "$(shown "${PROJECT_FOLDERS[index]}")"
   done
   for index in "${!ROLLUP_FILES[@]}"; do
     rollup_fact "${ROLLUP_FILES[index]}" "${ROLLUP_PROJECTS[index]}"
@@ -101,7 +110,11 @@ rollup_fact() {
   jq --null-input --compact-output --argjson project "$project" --arg file "${file##*/}" \
     --arg shown "$(shown "$file")" --rawfile text "$file" \
     '{kind: "rollup", project: $project, file: $file, shown: $shown, text: $text}' 2>/dev/null \
-    || refuse_place "$file" "could not be read"
+    || refuse_unreadable "$file"
+}
+
+refuse_unreadable() {
+  refuse_place "$1" "could not be read; let the comparison read it, or move it out of the folder"
 }
 
 # Ends the comparison with one line naming the place.

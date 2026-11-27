@@ -14,7 +14,7 @@ refuses: `docs/compare-setups.md`. This page says how it is built, how it is tes
 5. `scripts/compare/comparison.jq`, from the bottom (`comparison`) up: facts in, setups and plans out.
 6. `scripts/compare/figures.jq`: the figures shown, one line each. `scripts/compare/comparison_text.jq`: the text.
 7. `scripts/compare/program.sh`: how the collector's modules and these are joined.
-8. `comparing.sh`, then `side-by-side.test.sh` and `refusals.test.sh`: how a test is written.
+8. `comparing.sh`, then `side-by-side.test.sh`, `refusals.test.sh` and `output.test.sh`: how a test is written.
 
 ## The pattern
 | Layer | Files | Does |
@@ -22,7 +22,7 @@ refuses: `docs/compare-setups.md`. This page says how it is built, how it is tes
 | Entry | `scripts/compare-setups.sh` | reads the arguments, checks the tools, takes the budget, wires the port to the rules, prints; decides nothing |
 | Port (bash, read-only) | `scripts/compare/projects.sh` | every effect: finds and checks the places, reads each roll-up whole into a JSON fact, escapes each place it may print |
 | Rules (jq, pure) | `reading.jq`, `comparison.jq`, `figures.jq`, `comparison_text.jq`, with the collector's `format.jq`, `rollup.jq`, `rollup_text.jq` | every decision; the roll-up format is the collector's, never written twice |
-| The seam | `program.sh`: `comparison_jq "<collector/… compare/…>" '<filter>' <jq options>` | joins the named modules of both folders into one program, in the order given |
+| The seam | `program.sh`: `comparison_jq "<collector/... compare/...>" '<filter>' <jq options>` | joins the named modules of both folders into one program, in the order given |
 
 The flow: `find_rollups` checks every project folder and every `.md` file of its `ctxm/metrics/` and keeps the
 list; `rollup_facts` prints `{kind: "project", project, shown}` and `{kind: "rollup", project, file, shown, text}`;
@@ -34,10 +34,11 @@ with a column per setup that has it.
 | Helper | Does |
 |---|---|
 | `rolled_up_project <folder> <history> [<start>]` | builds `<folder>/project` with the plan `REQ-900` and the runs of `reviewed-items` (`../rollup/`), started at the time, and collects it with the real collector: its roll-up is what a project holds |
-| `compare <arguments>`, `compared <arguments>` | run the command as a person does, in an empty environment with a UTF-8 locale; `./stdout`, `./stderr`, `./status`, `./files-before`; `compared` fails unless the status is 0. `COMPARISON_PATH` narrows its `PATH` |
+| `compare <arguments>`, `compared <arguments>` | run the command as a person does, in an empty environment with a UTF-8 locale and a `TMPDIR` in the test folder; `./stdout`, `./stderr`, `./status`, `./files-before`, `./checkout-before`; `compared` fails unless the status is 0. `COMPARISON_PATH` narrows its `PATH` |
 | `compare_into_a_closed_pipe <arguments>` | the same, with stdout a pipe nobody reads |
+| `compare_into_a_full_device <arguments>` | the same, with stdout `/dev/full` |
 | `figure_row <heading> <figure>` | the row of a figure in a section (`Plan REQ-900`, `Item <task>`) of what was printed |
-| `assert_nothing_written` | fails unless the test's folder (every file's size, inode and times) is as it was before the last comparison |
+| `assert_nothing_written` | fails unless the test folder with its `TMPDIR`, and the library checkout (but `.git`, `.cache/tests`, `.cache/check`), are as they were before the last comparison: every file's size, inode and times |
 
 A scenario's numbers differ between projects by when their metrics start: a later start leaves the runs that
 ended before it out (`side-by-side.test.sh` names the times). A history of `../collector/histories/` or of the
@@ -52,8 +53,9 @@ Worked example: `items at the round limit` (a plan figure made from the items' r
 2. `reading.jq`: read it into the object, under the key `rollup_of` gives it, in `parsed` (a table's cells with
    `rows`, a bullet with `bullet`, a count with `count` or `count_or_unknown`). Until it is read, `rollup_text`
    writes the roll-up back without it and every roll-up is refused: `side-by-side.test.sh` fails on the collector's
-   own output, which is the guard that the two stay in step. A figure the collector writes as a fixed word today
-   is read all the same (`owner_questions`), so the day it gets a source nothing changes here.
+   own output, which is the guard that the two stay in step. A figure the collector writes as a fixed word
+   (`unknown`) is not read but shown as that word: the write-back check holds every roll-up to it, and the day
+   it gets a source the same guard asks for its read.
 3. `figures.jq`: one line, `["<the figure's words>", <its value>]`, in `plan_figures` or `item_figures`. A value
    that is no count is computed from the object, as `items at the round limit` from `.items[].rounds`.
 4. `docs/compare-setups.md`, "What it shows", and a test only if the figure is made here (not copied): beside

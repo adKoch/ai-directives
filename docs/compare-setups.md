@@ -1,18 +1,20 @@
 # The comparison of setups (`scripts/compare-setups.sh`)
 
 The template library's command that compares template setups: it reads the roll-ups the collector wrote into each
-project's `ctxm/metrics/` (`docs/metrics-format.md`, "The roll-ups") and shows the setups side by side, by plan and
-by item: the cost, the rounds, the escaped defects and the owner's questions. It reads nothing else and writes
-nothing, anywhere. How it is built and extended: `tests/metrics/compare/README.md`.
+project's `ctxm/metrics/` (`docs/metrics-format.md`, "The roll-ups") and shows the setups side by side: for each
+plan its cost, the items at the round limit, the escaped defects and the owner's questions; for each of its items
+its cost and its rounds. It reads nothing else and writes nothing, anywhere. How it is built and extended:
+`tests/metrics/compare/README.md`.
 
 ## Usage
 What `--help` prints (`scripts/compare/help.txt`; a test compares the two):
 
 ```text
 usage: compare-setups.sh [--help] [--] <project folder>...
-Shows the setups of the projects given side by side: for each plan and each of its items the cost, the rounds,
-the escaped defects and the owner's questions, read from the roll-ups in each project's ctxm/metrics/. A setup is
-a project with its templates and roles (the fingerprint). It reads only ctxm/metrics/*.md and writes nothing.
+Shows the setups of the projects given side by side, read from the roll-ups in each project's ctxm/metrics/: for
+each plan its cost, the items at the round limit, the escaped defects and the owner's questions; for each of its
+items its cost and its rounds. A setup is a project with its templates and roles (the fingerprint). It reads only
+ctxm/metrics/*.md and writes nothing.
   <project folder>  the folder of a project whose metrics the collector wrote; 1 to 8 of them
   --help            print this text
   --                every argument after it is a project folder
@@ -20,7 +22,7 @@ Exit codes:
   0  the comparison is printed on stdout (into a closed pipe: nothing, quietly)
   1  refused or failed: one error: line on stderr and nothing on stdout; a missing tool, an argument that is
      no project folder, a place that is a symbolic link, a file in ctxm/metrics/ that is no roll-up the collector
-     wrote, a roll-up too large
+     wrote, a roll-up too large or unreadable, a jq step or a write to stdout that failed
 Needs bash, jq and coreutils (dirname, basename, wc, timeout) from the caller's toolchain; LIBRARY_BUDGET_SECONDS sets
 its time budget (300 seconds). The rules: docs/compare-setups.md of the template library.
 ```
@@ -65,11 +67,14 @@ as escapes.
 It exits 1 with one `error:` line, prints nothing on stdout and writes nothing when:
 a tool is missing; no project folder is given, an option is not `--help` or `--`, or more than 8 folders are given;
 a folder given is no folder, has no `ctxm/metrics/` folder, or holds no `.md` file there; `ctxm` or `ctxm/metrics`
-is a symbolic link; `ctxm/metrics/` holds a file an interrupted collection kept (`<file>.old.<process id>`), or more
-than 100 `.md` files; a `.md` file there is no plain file (a link, a folder, a pipe), is larger than 1 MiB, or the
-roll-ups given hold more than 16 MiB together (sizes taken from the file system before anything is read); a `.md`
-file's name is no plan name (`docs/metrics-format.md`, "The roll-ups") or its text is not what the collector writes
-(above). The line names the place, escaped.
+is a symbolic link; `ctxm/metrics/` could not be read, holds a file an interrupted collection kept
+(`<file>.old.<process id>`), or more than 100 `.md` files; a `.md` file there is no plain file (a link, a folder, a
+pipe), could not be read, is larger than 1 MiB, or the roll-ups given hold more than 16 MiB together (sizes taken
+from the file system before anything is read); a `.md` file's name is no plan name (`docs/metrics-format.md`, "The
+roll-ups") or its text is not what the collector writes (above). The line names the place, escaped.
+
+It also exits 1 with one `error:` line when a jq step fails (jq's own words are not shown: they may quote what it
+read), and when the text cannot be written to stdout for any reason but a closed pipe, which ends it quietly with 0.
 
 ## Tools
 The library ships no toolchain. The comparison needs `bash` (4.4 or later), `jq`, and `dirname`, `basename`, `wc`,

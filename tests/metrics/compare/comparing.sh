@@ -14,7 +14,9 @@ readonly COMPARISON="$REPO_ROOT/scripts/compare-setups.sh"
 # shellcheck disable=SC2034 # read by the test files
 readonly ROLLUP_FILE=ctxm/metrics/REQ-900.md
 # What the comparison leaves in the test's folder itself; everything else is the projects', and stays as it was.
-readonly COMPARISON_OUTPUT=(stdout stderr status files-before)
+readonly COMPARISON_OUTPUT=(stdout stderr status files-before checkout-before)
+# The comparison's TMPDIR: a folder of the test's own, so a temporary file it left would show in files_state.
+readonly TEMPORARY_FOLDER=temporary
 
 # Builds <folder>/project from a history, with its metrics started at the time (default: before the plan), the plan
 # and the runs of reviewed-items (rolling.sh), and collects it: the collector writes its roll-up REQ-900.md.
@@ -33,14 +35,11 @@ rolled_up_project() {
 # Runs the comparison with the arguments, as the collector runs (an empty environment, the PATH, a home of its own),
 # in the UTF-8 locale of a person's terminal, where bash prints a character that turns text around as it is;
 # COMPARISON_PATH, when set, is its PATH instead.
-# Leaves ./stdout, ./stderr, the exit status in ./status, and the state of the test's folder before the run in
-# ./files-before (assert_nothing_written).
+# Leaves ./stdout, ./stderr, the exit status in ./status, and what assert_nothing_written compares with.
 compare() {
   local status=0
-  mkdir -p home
-  files_state >files-before
-  in_collector_environment PATH="${COMPARISON_PATH:-$PATH}" LANG=C.UTF-8 "$COMPARISON" "$@" >stdout 2>stderr \
-    || status=$?
+  note_what_was_there
+  in_comparison_environment "$@" >stdout 2>stderr || status=$?
   printf '%s\n' "$status" >status
 }
 
@@ -54,8 +53,31 @@ compared() {
 compare_into_a_closed_pipe() {
   local status=0
   : >stdout
-  in_collector_environment "$COMPARISON" "$@" 2>stderr | true || status=${PIPESTATUS[0]}
+  note_what_was_there
+  in_comparison_environment "$@" 2>stderr | true || status=${PIPESTATUS[0]}
   printf '%s\n' "$status" >status
+}
+
+# Runs the comparison with stdout a device that takes no byte (/dev/full): ./stderr and ./status as compare leaves
+# them, ./stdout empty.
+compare_into_a_full_device() {
+  local status=0
+  : >stdout
+  note_what_was_there
+  in_comparison_environment "$@" >/dev/full 2>stderr || status=$?
+  printf '%s\n' "$status" >status
+}
+
+in_comparison_environment() {
+  in_collector_environment PATH="${COMPARISON_PATH:-$PATH}" LANG=C.UTF-8 TMPDIR="$PWD/$TEMPORARY_FOLDER" \
+    "$COMPARISON" "$@"
+}
+
+# Notes the state of the test's folder in ./files-before and of the library checkout in ./checkout-before.
+note_what_was_there() {
+  mkdir -p home "$TEMPORARY_FOLDER"
+  files_state >files-before
+  checkout_state >checkout-before
 }
 
 # Prints the row of the figure in the section under the heading (`Plan <plan>`, `Item <task>`, `Setups`) of what
@@ -82,9 +104,28 @@ files_state() (
   stat --format='%n %s %i %y %z' -- "${files[@]}"
 )
 
-# Fails unless the test's folder is as it was before the last comparison.
+# Prints every file and folder of the library checkout with its size, inode and times, but its git store and the
+# cache's test runs and check logs, which the test run itself writes: a cache folder made, or a file written,
+# replaced or touched, shows.
+checkout_state() (
+  local places=(.) place
+  cd "$REPO_ROOT"
+  shopt -s globstar dotglob nullglob
+  for place in * .cache/*; do
+    case "$place" in
+      .git | .cache/tests | .cache/check) ;;
+      .cache) places+=("$place") ;;
+      *) places+=("$place" "$place"/**) ;;
+    esac
+  done
+  stat --format='%n %s %i %y %z' -- "${places[@]}"
+)
+
+# Fails unless the test's folder, its TMPDIR and the library checkout are as they were before the last comparison.
 assert_nothing_written() {
   local before
   before="$(<files-before)"
   assert_prints "$before" files_state
+  before="$(<checkout-before)"
+  assert_prints "$before" checkout_state
 }

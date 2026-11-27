@@ -50,8 +50,8 @@ def review_items: rows(["item", "role", "reports", "blocking", "nits", "blocking
 
 def setups: rows(["templates", "roles", "lines"]) | map({templates: .[0], roles: .[1], lines: (.[2] | count)});
 
-# The numbers of the text (its lines), as `rollup_of` gives them, plus the figures that rollup_text writes as fixed
-# words today (the owner's questions and change requests): read from the text, so a source added later is read too.
+# The numbers of the text (its lines), as `rollup_of` gives them: what rollup_text writes from. A figure it writes as
+# a fixed word (`unknown`) is not read; the write-back check holds the text to that word.
 def parsed:
   main_row as $main
   | {
@@ -67,8 +67,6 @@ def parsed:
       review_items: review_items,
       defects_at_tests: (bullet("defects found at tests (blocking findings of the release-tester)") | count),
       candidates: (bullet("release candidates") | count_or_unknown),
-      change_requests: (bullet("owner change requests at a candidate") | count_or_unknown),
-      owner_questions: (bullet("questions brought to the owner") | count_or_unknown),
       period: (if $main == null then null else {from: ($main[0] | time_seconds), to: ($main[1] | time_seconds)} end),
       main: (if $main == null then null else $main[2:] | costs_of end)
     };

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # What the comparison refuses before it shows anything: a missing tool, an argument that is no project, a link or a
-# file that is no plain one where it reads, a file of ctxm/metrics/ that is no roll-up the collector wrote, a roll-up
-# too large. A refusal is one line, exit 1, nothing on stdout and nothing written; a place is printed escaped.
+# file that is no plain one where it reads, a place it may not read, a file of ctxm/metrics/ that is no roll-up the
+# collector wrote, a roll-up too large. A refusal is one line, exit 1, nothing on stdout and nothing written; a place
+# is printed escaped.
 # shellcheck source=comparing.sh
 source "$(dirname "${BASH_SOURCE[0]}")/comparing.sh"
 
@@ -12,6 +13,13 @@ readonly NOT_READ='is no roll-up in the format of the collector (docs/metrics-fo
 ' project again with the current templates, or move the file out of the folder'
 readonly UNNAMED='is no roll-up: its name is no plan name, and ctxm/metrics/ holds no other .md file; move it out of'\
 ' the folder'
+readonly UNREADABLE='could not be read; let the comparison read it, or move it out of the folder'
+# The characters of the abuse cases, made from their bytes when the test runs, so this file holds none of them: an
+# escape, the right-to-left override U+202E in UTF-8, and a byte that is no UTF-8.
+readonly ESCAPE=$'\033'
+TURN_AROUND="$(printf '\342\200\256')"
+NO_UTF8="$(printf '\377')"
+readonly TURN_AROUND NO_UTF8
 
 # Fails unless the last comparison was refused with that line (given in parts, joined by spaces), printed nothing
 # on stdout and wrote nothing.
@@ -22,10 +30,15 @@ assert_refused() {
   assert_nothing_written
 }
 
-# Fails when a raw escape character, or the mark of the synthetic free text, stands in what the comparison said.
+# Fails when a raw character of the abuse cases, or the mark of the synthetic free text, stands in what the
+# comparison said. Matched byte for byte (the C locale), so the locale of the test's shell cannot change what is found.
 assert_nothing_raw_got_out() {
-  [[ "$(<stdout)$(<stderr)" != *[$'\e‮\xff']* ]] || fail "a raw control or turning character was printed"
-  [[ "$(<stdout)$(<stderr)" != *synthetic-text* ]] || fail "text of a roll-up was printed"
+  local LC_ALL=C said character
+  said="$(<stdout)$(<stderr)"
+  for character in "$ESCAPE" "$TURN_AROUND" "$NO_UTF8"; do
+    [[ "$said" != *"$character"* ]] || fail "a raw control or turning character was printed"
+  done
+  [[ "$said" != *synthetic-text* ]] || fail "text of a roll-up was printed"
 }
 
 # catches: a comparison that reads although a required tool is missing, or whose line no longer names the tool.
@@ -55,7 +68,8 @@ test_a_rollup_with_text_the_collector_does_not_write_is_refused_naming_the_file(
     '| REQ-900-1A-first-example | 2 | no |' '| REQ-900-1A-first-example | 2 | yes |'
     '# Metrics of plan REQ-900' '# Metrics of plan REQ-901'
     '- coverage: whole' '- coverage: whole synthetic-text'
-    '- coverage: whole' $'- coverage: whole‮'
+    '- coverage: whole' "- coverage: whole$TURN_AROUND"
+    '- questions brought to the owner: unknown' '- questions brought to the owner: 3'
   )
   for ((index = 0; index < ${#edits[@]}; index += 2)); do
     printf '%s\n' "${original/"${edits[index]}"/"${edits[index + 1]}"}" >"$ROLLUP"
@@ -69,11 +83,11 @@ test_a_rollup_with_text_the_collector_does_not_write_is_refused_naming_the_file(
 # text around or a byte that is no UTF-8 could rewrite the terminal or hide what is shown.
 test_places_from_outside_are_printed_escaped_in_a_refusal_and_in_the_comparison() {
   rolled_up_project alpha one-setup
-  cp "$ROLLUP" "alpha/project/ctxm/metrics/"$'\e[31m‮\xff.md'
+  cp "$ROLLUP" "alpha/project/ctxm/metrics/${ESCAPE}[31m$TURN_AROUND$NO_UTF8.md"
   compare alpha/project
   assert_refused "\$'alpha/project/ctxm/metrics/\\E[31m\\342\\200\\256\\377.md' $UNNAMED"
   assert_nothing_raw_got_out
-  rm "alpha/project/ctxm/metrics/"$'\e[31m‮\xff.md'
+  rm "alpha/project/ctxm/metrics/${ESCAPE}[31m$TURN_AROUND$NO_UTF8.md"
   mv alpha $'al\e[1m\xffpha'
   compared $'al\e[1m\xffpha/project'
   assert_prints "1" grep --count --fixed-strings "| \$'al\\E[1m\\377pha/project' |" stdout
@@ -101,6 +115,35 @@ test_a_link_or_a_file_that_is_no_plain_one_where_roll_ups_are_read_is_refused() 
   assert_refused "$metrics/REQ-902.md is no plain file, so no roll-up; move it out of the folder"
 }
 
+# catches: a project whose ctxm folder is a link out of the project read through it: its ctxm/metrics/ is a plain
+# folder there, so only the check of ctxm itself stops it.
+test_a_ctxm_folder_that_is_a_link_out_of_the_project_is_refused() {
+  rolled_up_project alpha one-setup
+  mv alpha/project/ctxm outside
+  ln -s "$PWD/outside" alpha/project/ctxm
+  compare alpha/project
+  assert_refused "alpha/project/ctxm/metrics is reached through a symbolic link: the comparison reads only a" \
+    "project's own ctxm/metrics/; remove the link"
+}
+
+# catches: a roll-up or a ctxm/metrics/ folder the comparison may not read, refused for another reason or with
+# bash's own line beside its own, which prints the place as it is.
+test_a_rollup_or_a_metrics_folder_that_cannot_be_read_is_refused_in_one_escaped_line() {
+  local metrics=alpha/project/ctxm/metrics locked
+  rolled_up_project alpha one-setup
+  locked="$metrics/${ESCAPE}[31m${TURN_AROUND}REQ-901.md"
+  cp "$ROLLUP" "$locked"
+  chmod 000 "$locked"
+  compare alpha/project
+  assert_refused "\$'$metrics/\\E[31m\\342\\200\\256REQ-901.md' $UNREADABLE"
+  assert_nothing_raw_got_out
+  rm -f "$locked"
+  trap 'chmod u+rwx alpha/project/ctxm/metrics' EXIT
+  chmod 000 "$metrics"
+  compare alpha/project
+  assert_refused "$metrics could not be read; let the comparison read it and list its files"
+}
+
 # catches: a file too large for a roll-up, roll-ups too large together, or more of them than a project has, read
 # whole: the comparison would take any size of memory and time.
 test_too_large_or_too_many_rollups_are_refused_before_one_is_read() {
@@ -119,7 +162,8 @@ test_too_large_or_too_many_rollups_are_refused_before_one_is_read() {
     : >"alpha/project/ctxm/metrics/REQ-$number.md"
   done
   compare alpha/project
-  assert_refused "alpha/project/ctxm/metrics holds more than 100 roll-ups"
+  assert_refused "alpha/project/ctxm/metrics holds more than 100 roll-ups; compare a project with fewer, or move the" \
+    "files that are no roll-up of a plan out of the folder"
 }
 
 # catches: a folder that holds no metrics compared as if it had none to show, or a comparison of roll-ups that an
@@ -150,14 +194,6 @@ test_no_project_an_unknown_option_or_too_many_projects_is_refused() {
   assert_refused "$usage"
   compare a b c d e f g h i
   assert_refused 'more than 8 projects given; compare fewer at once'
-}
-
-# catches: a comparison into a pipe nobody reads that ends with an error or a broken-pipe line.
-test_a_comparison_into_a_closed_pipe_ends_quietly() {
-  rolled_up_project alpha one-setup
-  compare_into_a_closed_pipe alpha/project
-  assert_prints 0 cat status
-  assert_prints '' cat stderr
 }
 
 run_tests

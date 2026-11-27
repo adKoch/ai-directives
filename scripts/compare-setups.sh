@@ -21,7 +21,7 @@ readonly USAGE='usage: compare-setups.sh [--help] [--] <project folder>...; --he
 PROJECT_FOLDERS=()
 
 main() {
-  local result
+  local facts result
   if asks_for_help "$@"; then
     result="$(<"$HELP_FILE")"
     print_result "$result"
@@ -29,7 +29,8 @@ main() {
   fi
   read_project_folders "$@"
   find_rollups
-  result="$(comparison_result)"
+  facts="$(rollup_facts)"
+  result="$(comparison_result "$facts")"
   print_comparison "$result"
 }
 
@@ -68,9 +69,10 @@ add_project_folder() {
   PROJECT_FOLDERS+=("$folder")
 }
 
-# Prints the comparison of the facts of the roll-ups found (compare/comparison.jq): {text} or {refusal}.
+# Prints the comparison of the facts (compare/comparison.jq): {text} or {refusal}. The facts are gathered first, so
+# a refusal while gathering them is the only line.
 comparison_result() {
-  rollup_facts | comparison_jq "$COMPARISON_MODULES" comparison --slurp --compact-output
+  printf '%s\n' "$1" | comparison_jq "$COMPARISON_MODULES" comparison --slurp --compact-output
 }
 
 # Prints the comparison's text, or ends with its refusal.
@@ -83,13 +85,18 @@ print_comparison() {
 }
 
 result_part() {
-  printf '%s\n' "$2" | jq --raw-output "$1"
+  printf '%s\n' "$2" | comparison_jq '' "$1" --raw-output
 }
 
-# Prints the text on stdout. A closed stdout loses the text, quietly: nothing is left to do.
+# Prints the text on stdout. A closed stdout loses the text, quietly: nothing is left to do. Any other failed write
+# ends the comparison with its line, as the text did not arrive. The C locale makes bash's word for the closed pipe
+# the same in every locale.
 print_result() {
+  local LC_ALL=C failure=''
   trap '' PIPE
-  printf '%s\n' "$1" 2>/dev/null || true
+  { failure="$(printf '%s\n' "$1" 2>&1 >&3)"; } 3>&1 || true
+  [[ -z "$failure" || "$failure" == *'Broken pipe' ]] \
+    || die "the comparison could not be written to stdout; give it a place to write that takes the whole text"
 }
 
 main "$@"
