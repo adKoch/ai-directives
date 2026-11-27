@@ -1,0 +1,19 @@
+{
+  "about": "A project on the templates with one setup: a lock of ctxm 0.7 with two templates at one library commit, and two agent files, the inspector's with a model and an effort, the reviewer's with a model only.",
+  "commits": [
+    {
+      "minute": -1440,
+      "lock": {
+        "version": 6,
+        "templates": [
+          {"name": "agents-base", "commit": "1111111111111111111111111111111111111111"},
+          {"name": "coding", "commit": "1111111111111111111111111111111111111111"}
+        ]
+      },
+      "agents": [
+        {"name": "inspector", "description": "synthetic-text inspector", "model": "claude-synthetic-small", "effort": "medium"},
+        {"name": "reviewer", "description": "synthetic-text reviewer", "model": "claude-synthetic-large"}
+      ]
+    }
+  ]
+}

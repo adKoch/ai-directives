@@ -1,0 +1,65 @@
+{
+  "about": "A project on the templates whose second commit, at minute 30, changes only the description of an agent: the setup's fingerprint stays the same.",
+  "commits": [
+    {
+      "minute": -1440,
+      "lock": {
+        "version": 6,
+        "templates": [
+          {
+            "name": "agents-base",
+            "commit": "1111111111111111111111111111111111111111"
+          },
+          {
+            "name": "coding",
+            "commit": "1111111111111111111111111111111111111111"
+          }
+        ]
+      },
+      "agents": [
+        {
+          "name": "inspector",
+          "description": "synthetic-text inspector",
+          "model": "claude-synthetic-small",
+          "effort": "medium"
+        },
+        {
+          "name": "reviewer",
+          "description": "synthetic-text reviewer",
+          "model": "claude-synthetic-large",
+          "effort": "high"
+        }
+      ]
+    },
+    {
+      "minute": 30,
+      "lock": {
+        "version": 6,
+        "templates": [
+          {
+            "name": "agents-base",
+            "commit": "1111111111111111111111111111111111111111"
+          },
+          {
+            "name": "coding",
+            "commit": "1111111111111111111111111111111111111111"
+          }
+        ]
+      },
+      "agents": [
+        {
+          "name": "inspector",
+          "description": "synthetic-text inspector",
+          "model": "claude-synthetic-small",
+          "effort": "medium"
+        },
+        {
+          "name": "reviewer",
+          "description": "synthetic-text reviewer, said otherwise",
+          "model": "claude-synthetic-large",
+          "effort": "high"
+        }
+      ]
+    }
+  ]
+}

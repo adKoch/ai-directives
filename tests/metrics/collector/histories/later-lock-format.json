@@ -1,0 +1,17 @@
+{
+  "about": "A project whose lock is in a later format than ctxm 0.7 writes: the collector cannot read its setup.",
+  "commits": [
+    {
+      "minute": -1440,
+      "lock": {
+        "version": 7,
+        "templates": [
+          {"name": "agents-base", "commit": "1111111111111111111111111111111111111111"}
+        ]
+      },
+      "agents": [
+        {"name": "inspector", "description": "synthetic-text inspector", "model": "claude-synthetic-small", "effort": "medium"}
+      ]
+    }
+  ]
+}

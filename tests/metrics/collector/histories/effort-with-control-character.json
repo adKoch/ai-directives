@@ -1,0 +1,17 @@
+{
+  "about": "A project whose inspector file names an effort that holds a control character (a bell) after a line of the mark: a value that is no plain word.",
+  "commits": [
+    {
+      "minute": -1440,
+      "lock": {
+        "version": 6,
+        "templates": [
+          {"name": "agents-base", "commit": "1111111111111111111111111111111111111111"}
+        ]
+      },
+      "agents": [
+        {"name": "inspector", "description": "synthetic-text inspector", "model": "claude-synthetic-small", "effort": "synthetic-text\u0007high"}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "about": "A session and a fork of it whose file names the copied records by the fork's id, which sorts first. The earlier session makes two calls (1 and 2 input tokens; the other kinds ten, a hundred and a thousand times that) and ends at minute 10. The fork starts at minute 30 with a copy of those records, renamed, and makes one call of its own (4 input tokens). Counted once: the earlier session 3, the fork 4.",
+  "sessions": [
+    {
+      "id": "eeeeeeee-0000-4000-8000-000000000002",
+      "model": "claude-synthetic-large",
+      "events": [
+        {"minute": 0, "prompt": "synthetic-text the owner starts the work"},
+        {"minute": 1, "call": "msg_synthetic_earlier_01", "usage": {"input_tokens": 1, "output_tokens": 10, "cache_creation_input_tokens": 100, "cache_read_input_tokens": 1000}},
+        {"minute": 10, "call": "msg_synthetic_earlier_02", "usage": {"input_tokens": 2, "output_tokens": 20, "cache_creation_input_tokens": 200, "cache_read_input_tokens": 2000}}
+      ]
+    },
+    {
+      "id": "eeeeeeee-0000-4000-8000-000000000001",
+      "copies": "eeeeeeee-0000-4000-8000-000000000002",
+      "renames_copies": true,
+      "model": "claude-synthetic-large",
+      "events": [
+        {"minute": 30, "prompt": "synthetic-text the owner goes another way"},
+        {"minute": 31, "call": "msg_synthetic_fork_01", "usage": {"input_tokens": 4, "output_tokens": 40, "cache_creation_input_tokens": 400, "cache_read_input_tokens": 4000}}
+      ]
+    }
+  ]
+}

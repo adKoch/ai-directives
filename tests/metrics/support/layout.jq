@@ -18,7 +18,7 @@ def own_run($session; $file):
 def own_session($ordinal):
   . as $session
   | ($ordinal * 100) as $file
-  | {id, copies, title, agent_name}
+  | {id, copies, renames_copies, title, agent_name}
   + {
       events: (.events // [] | placed({session: $session.id, model: $session.model, file: $file})),
       runs: [.runs // [] | to_entries[] | .key as $run | .value | own_run($session.id; $file + $run + 1)]
@@ -36,16 +36,21 @@ def standing_at($minute):
       | if .finished != null and .finished > $minute then .finished = null else . end
     );
 
+def renamed_to($session):
+  if $session.renames_copies then map(.writer.session = $session.id) else . end;
+
 def session_named($id): first(.[] | select(.id == $id)) // error("no session \($id) to copy");
 
 # A resumed or forked session starts with what the earlier session had written when it began: the same events, and
 # the same runs under its own folder. What the earlier session writes after that is not in the copy.
+# With `renames_copies`, the copy of the earlier session's own records names this session, as a fork or a resume
+# of Claude Code sometimes writes it; its runs' copies are unchanged.
 def with_copied($sessions):
   . as $session
   | if .copies == null then .
     else .events[0].minute as $began
       | ($sessions | session_named($session.copies) | with_copied($sessions) | standing_at($began)) as $earlier
-      | .events = $earlier.events + .events
+      | .events = ($earlier.events | renamed_to($session)) + .events
       | .runs = $earlier.runs + .runs
     end;
 

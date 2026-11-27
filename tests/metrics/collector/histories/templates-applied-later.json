@@ -1,0 +1,23 @@
+{
+  "about": "A project that has agent files from the start and applies the templates at minute 30: its first commit has no lock. With the shape `session-across-template-update`, the first run and the session's first two calls are at a commit without `.ctxm/`.",
+  "commits": [
+    {
+      "minute": -1440,
+      "agents": [
+        {"name": "inspector", "description": "synthetic-text inspector", "model": "claude-synthetic-small", "effort": "medium"}
+      ]
+    },
+    {
+      "minute": 30,
+      "lock": {
+        "version": 6,
+        "templates": [
+          {"name": "agents-base", "commit": "2222222222222222222222222222222222222222"}
+        ]
+      },
+      "agents": [
+        {"name": "inspector", "description": "synthetic-text inspector", "model": "claude-synthetic-small", "effort": "high"}
+      ]
+    }
+  ]
+}

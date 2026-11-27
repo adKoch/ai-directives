@@ -1,0 +1,234 @@
+{
+  "about": "One main session whose finished runs carry a payload where the task name stands, in backticks after `Task:`: a formula, a comma, a quote, a line break, a path with `..` and `/`, two secret-like strings (one after a request id), and a payload before a second, valid `Task:`. The last run names a valid task. Every payload holds the mark. Each run uses 1, 10, 100 and 1000 tokens.",
+  "sessions": [
+    {
+      "id": "99999999-0000-4000-8000-000000000001",
+      "model": "claude-synthetic-large",
+      "events": [
+        {
+          "minute": 0,
+          "prompt": "synthetic-text the owner asks for several things"
+        },
+        {
+          "minute": 1,
+          "call": "msg_synthetic_payload_main",
+          "usage": {
+            "input_tokens": 1,
+            "output_tokens": 10,
+            "cache_creation_input_tokens": 100,
+            "cache_read_input_tokens": 1000
+          }
+        }
+      ],
+      "runs": [
+        {
+          "agent": "90000000000000001",
+          "role": "inspector",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text what the run is for",
+          "finished": 9,
+          "events": [
+            {
+              "minute": 2,
+              "prompt": "Task: `=HYPERLINK(\"synthetic-text\")` synthetic-text the rest"
+            },
+            {
+              "minute": 3,
+              "call": "msg_synthetic_payload_1",
+              "usage": {
+                "input_tokens": 1,
+                "output_tokens": 10,
+                "cache_creation_input_tokens": 100,
+                "cache_read_input_tokens": 1000
+              }
+            }
+          ]
+        },
+        {
+          "agent": "90000000000000002",
+          "role": "inspector",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text what the run is for",
+          "finished": 9,
+          "events": [
+            {
+              "minute": 2,
+              "prompt": "Task: `REQ-900-7B-synthetic-text,second` synthetic-text the rest"
+            },
+            {
+              "minute": 3,
+              "call": "msg_synthetic_payload_2",
+              "usage": {
+                "input_tokens": 1,
+                "output_tokens": 10,
+                "cache_creation_input_tokens": 100,
+                "cache_read_input_tokens": 1000
+              }
+            }
+          ]
+        },
+        {
+          "agent": "90000000000000003",
+          "role": "inspector",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text what the run is for",
+          "finished": 9,
+          "events": [
+            {
+              "minute": 2,
+              "prompt": "Task: `REQ-900-7C-\"synthetic-text\"` synthetic-text the rest"
+            },
+            {
+              "minute": 3,
+              "call": "msg_synthetic_payload_3",
+              "usage": {
+                "input_tokens": 1,
+                "output_tokens": 10,
+                "cache_creation_input_tokens": 100,
+                "cache_read_input_tokens": 1000
+              }
+            }
+          ]
+        },
+        {
+          "agent": "90000000000000004",
+          "role": "inspector",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text what the run is for",
+          "finished": 9,
+          "events": [
+            {
+              "minute": 2,
+              "prompt": "Task: `REQ-900-7D-synthetic-text\nREQ-900-7D-second-line` synthetic-text the rest"
+            },
+            {
+              "minute": 3,
+              "call": "msg_synthetic_payload_4",
+              "usage": {
+                "input_tokens": 1,
+                "output_tokens": 10,
+                "cache_creation_input_tokens": 100,
+                "cache_read_input_tokens": 1000
+              }
+            }
+          ]
+        },
+        {
+          "agent": "90000000000000005",
+          "role": "inspector",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text what the run is for",
+          "finished": 9,
+          "events": [
+            {
+              "minute": 2,
+              "prompt": "Task: `REQ-900-7E-../../synthetic-text` synthetic-text the rest"
+            },
+            {
+              "minute": 3,
+              "call": "msg_synthetic_payload_5",
+              "usage": {
+                "input_tokens": 1,
+                "output_tokens": 10,
+                "cache_creation_input_tokens": 100,
+                "cache_read_input_tokens": 1000
+              }
+            }
+          ]
+        },
+        {
+          "agent": "90000000000000006",
+          "role": "inspector",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text what the run is for",
+          "finished": 9,
+          "events": [
+            {
+              "minute": 2,
+              "prompt": "Task: `sk-synthetic-text-0123456789abcdef0123456789abcdef0123456789` synthetic-text the rest"
+            },
+            {
+              "minute": 3,
+              "call": "msg_synthetic_payload_6",
+              "usage": {
+                "input_tokens": 1,
+                "output_tokens": 10,
+                "cache_creation_input_tokens": 100,
+                "cache_read_input_tokens": 1000
+              }
+            }
+          ]
+        },
+        {
+          "agent": "90000000000000007",
+          "role": "inspector",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text what the run is for",
+          "finished": 9,
+          "events": [
+            {
+              "minute": 2,
+              "prompt": "Task: `REQ-900-7G-synthetic-text0123456789abcdef0123456789abcdef` synthetic-text the rest"
+            },
+            {
+              "minute": 3,
+              "call": "msg_synthetic_payload_7",
+              "usage": {
+                "input_tokens": 1,
+                "output_tokens": 10,
+                "cache_creation_input_tokens": 100,
+                "cache_read_input_tokens": 1000
+              }
+            }
+          ]
+        },
+        {
+          "agent": "90000000000000008",
+          "role": "inspector",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text what the run is for",
+          "finished": 9,
+          "events": [
+            {
+              "minute": 2,
+              "prompt": "Task: `@synthetic-text` and Task: `REQ-900-7H-second-name` synthetic-text the rest"
+            },
+            {
+              "minute": 3,
+              "call": "msg_synthetic_payload_8",
+              "usage": {
+                "input_tokens": 1,
+                "output_tokens": 10,
+                "cache_creation_input_tokens": 100,
+                "cache_read_input_tokens": 1000
+              }
+            }
+          ]
+        },
+        {
+          "agent": "90000000000000009",
+          "role": "inspector",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text what the run is for",
+          "finished": 9,
+          "events": [
+            {
+              "minute": 2,
+              "prompt": "Task: `REQ-900-7Z-valid-name` synthetic-text the rest"
+            },
+            {
+              "minute": 3,
+              "call": "msg_synthetic_payload_9",
+              "usage": {
+                "input_tokens": 1,
+                "output_tokens": 10,
+                "cache_creation_input_tokens": 100,
+                "cache_read_input_tokens": 1000
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

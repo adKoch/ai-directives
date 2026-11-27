@@ -1,0 +1,25 @@
+{
+  "about": "A finished run whose first prompt names no task after its first Task: and a task after a second one. The run makes one call of 1 input token; the session makes none.",
+  "sessions": [
+    {
+      "id": "77777777-0000-4000-8000-000000000001",
+      "model": "claude-synthetic-large",
+      "events": [
+        {"minute": 0, "prompt": "synthetic-text the owner asks for a run"}
+      ],
+      "runs": [
+        {
+          "agent": "70000000000000001",
+          "role": "inspector",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text what the run is for",
+          "finished": 5,
+          "events": [
+            {"minute": 1, "prompt": "Task: inspection of `REQ-900-8G-first-mention`, synthetic-text then Task: `REQ-900-8H-second-mention`"},
+            {"minute": 2, "call": "msg_synthetic_mention_01", "usage": {"input_tokens": 1, "output_tokens": 1, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}}
+          ]
+        }
+      ]
+    }
+  ]
+}

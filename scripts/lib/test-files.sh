@@ -8,6 +8,12 @@ readonly TEST_FILES=(
   scripts/lib/tests/test-files.test.sh
   tests/metrics/support/project.test.sh
   tests/metrics/support/testing.test.sh
+  tests/metrics/collector/format.test.sh
+  tests/metrics/collector/refusals.test.sh
+  tests/metrics/collector/runs.test.sh
+  tests/metrics/collector/sessions.test.sh
+  tests/metrics/collector/start.test.sh
+  tests/metrics/collector/text.test.sh
   tests/metrics/support/transcripts.test.sh
 )
 

@@ -1,0 +1,36 @@
+{
+  "about": "Two finished runs of one call each, whose usage writes its counts in forms a number may take in JSON. The first writes 1E2 input tokens and 10.0 output tokens (100 and 10), the second 1e30 input tokens, more than a count can hold exactly. The session makes no call.",
+  "sessions": [
+    {
+      "id": "88888888-0000-4000-8000-000000000001",
+      "model": "claude-synthetic-large",
+      "events": [
+        {"minute": 0, "prompt": "synthetic-text the owner asks for two runs"}
+      ],
+      "runs": [
+        {
+          "agent": "80000000000000001",
+          "role": "inspector",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text what the run is for",
+          "finished": 5,
+          "events": [
+            {"minute": 1, "prompt": "Task: `REQ-900-8E-other-forms` synthetic-text the plan item"},
+            {"minute": 2, "call": "msg_synthetic_forms_01", "usage": {"input_tokens": 1E2, "output_tokens": 10.0, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}}
+          ]
+        },
+        {
+          "agent": "80000000000000002",
+          "role": "inspector",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text what the run is for",
+          "finished": 9,
+          "events": [
+            {"minute": 6, "prompt": "Task: `REQ-900-8F-too-large` synthetic-text the plan item"},
+            {"minute": 7, "call": "msg_synthetic_forms_02", "usage": {"input_tokens": 1e30, "output_tokens": 1, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}}
+          ]
+        }
+      ]
+    }
+  ]
+}
