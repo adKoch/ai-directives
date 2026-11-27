@@ -123,4 +123,14 @@ unmarked_texts() (
   ' "${files[@]}"
 )
 
+# catches: a reversal of the session ids that leaves them as they were, or turns `id` and not `copies`: a test of both
+# id orders would check one order twice, or copy a session that is not there.
+test_reversing_the_session_ids_trades_the_first_for_the_last_in_ids_and_copies() {
+  local reversed="[[\"$RESUMED_SESSION\",null],[\"$FORKED_SESSION\",\"$RESUMED_SESSION\"],"
+  reversed+="[\"$FIRST_SESSION\",\"$FORKED_SESSION\"]]"
+  assert_prints "$reversed" \
+    jq -c -L "$SUPPORT" 'include "shapes"; with_session_ids_reversed | [.sessions[] | [.id, .copies]]' \
+    "$FIXTURES/transcripts/forked-session.json"
+}
+
 run_tests

@@ -1,0 +1,26 @@
+{
+  "about": "A session that ends before the start (minute 20 in its test) and is both forked and resumed in place. The original makes two calls (1 and 2 input tokens; the other kinds ten, a hundred and a thousand times that) by minute 10. A fork starts at minute 30 with a copy of those records, renamed to the fork, which sorts first, and makes one call (4); it ends at minute 31. The original is resumed in its own file at minute 40 and makes one call (8). The copied calls belong to the session whose records end first: collected once at the end, the fork's (7) and the original's own new call (8); collected at minute 35 too, the original's, which ended before the start, so passed over for good: the fork 4, the original 8.",
+  "sessions": [
+    {
+      "id": "34343434-0000-4000-8000-000000000002",
+      "model": "claude-synthetic-large",
+      "events": [
+        {"minute": 0, "prompt": "synthetic-text the owner starts the work"},
+        {"minute": 1, "call": "msg_synthetic_resumed_01", "usage": {"input_tokens": 1, "output_tokens": 10, "cache_creation_input_tokens": 100, "cache_read_input_tokens": 1000}},
+        {"minute": 10, "call": "msg_synthetic_resumed_02", "usage": {"input_tokens": 2, "output_tokens": 20, "cache_creation_input_tokens": 200, "cache_read_input_tokens": 2000}},
+        {"minute": 40, "prompt": "synthetic-text the owner comes back to it"},
+        {"minute": 41, "call": "msg_synthetic_resumed_03", "usage": {"input_tokens": 8, "output_tokens": 80, "cache_creation_input_tokens": 800, "cache_read_input_tokens": 8000}}
+      ]
+    },
+    {
+      "id": "34343434-0000-4000-8000-000000000001",
+      "copies": "34343434-0000-4000-8000-000000000002",
+      "renames_copies": true,
+      "model": "claude-synthetic-large",
+      "events": [
+        {"minute": 30, "prompt": "synthetic-text the owner goes another way"},
+        {"minute": 31, "call": "msg_synthetic_resumed_fork_01", "usage": {"input_tokens": 4, "output_tokens": 40, "cache_creation_input_tokens": 400, "cache_read_input_tokens": 4000}}
+      ]
+    }
+  ]
+}

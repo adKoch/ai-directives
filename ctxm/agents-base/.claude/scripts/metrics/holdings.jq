@@ -1,20 +1,10 @@
-# What the project already holds, read for a collection: where each session's records end, which spans of time and
-# which agents its lines already cover, and the start record. Pure; needs format.jq. Used by lines.jq.
+# What the project already holds, read for a collection: where each session's records end, which agents have their
+# line, and the start record. Pure; needs format.jq. Used by lines.jq.
 
 # The last time each session named by a session's own transcript wrote a record.
 def last_records:
   reduce (.[] | select(.kind == "session") | .sessions | to_entries[]) as $seen ({};
     .[$seen.key] = ([.[$seen.key], $seen.value] | max));
-
-# The spans of time the lines of each main session cover, in seconds.
-def counted_spans:
-  reduce (.[] | select(.role == main_role)) as $line ({};
-    .[$line.session] += [{from: ($line.start | time_seconds), to: ($line.end | time_seconds)}]);
-
-# The end of the last line each main session has.
-def counted_until:
-  reduce (.[] | select(.role == main_role)) as $line ({};
-    .[$line.session] = ([.[$line.session], ($line.end | time_seconds)] | max));
 
 def written_agents: map(select(.role != main_role) | {key: .agent, value: true}) | from_entries;
 

@@ -7,6 +7,7 @@ a fixture is copied from one: only key names and the file layout are mirrored.
 |---|---|
 | `make-transcripts.sh <shape.json> <folder> <epoch> [<minute>]` | Claude Code's transcripts for one project, from a shape; with `<minute>`, as the files stand at that minute, so a second build with a later minute lets them grow |
 | `make-project.sh <history.json> <folder> <epoch>` | a project with a git history whose commits hold the lock ctxm writes and the agent files |
+| `shapes.jq` | a shape turned into another: `with_session_ids_reversed` gives each session the id that stands opposite its own in sort order, so one shape shows a rule in both id orders (`transcripts_in_id_order` in `../collector/collecting.sh`) |
 | `testing.sh` | a test file: `test_` functions under a `# catches:` line, `assert_prints <expected> <command>` (never `assert_… "$(command)"`, which the lint refuses: it passes when the command fails but prints the expected value), `assert_equal`, `assert_same_content`, `assert_starts_with_content`, `fail`, an empty folder per test under `.cache/tests/` |
 | `../fixtures/transcripts/*.json` | the shapes: one file per transcript shape, its `about` says what it holds and its token sums |
 | `../fixtures/projects/*.json` | the histories: one file per project history |
@@ -54,7 +55,11 @@ a commit stands at its minute of the session (`session-across-template-update.js
   the event's row to the table above and its key names to the table below. Worked example: `compaction` (the
   definition `compaction_record`, its branch, its row above, the shape `compacted-session.json`).
 - **A new file or a new relation between sessions**: in `layout.jq`; `copies` (`with_copied`) is the example.
-- Save a test in `transcripts.test.sh` only for a property that a collector test would pass without, as the five
+- **The same shape in another arrangement of its ids**: a definition in `shapes.jq`, applied before the maker reads the
+  shape; `with_session_ids_reversed` is the example. A chain of copies is a shape whose sessions copy each other in
+  turn (`../collector/shapes/three-session-chain.json`); a copy of a copy is built from the copy as it stood, and
+  `renames_copies` renames everything that copy holds, the records it copied itself included.
+- Save a test in `transcripts.test.sh` only for a property that a collector test would pass without, as the ones
   there.
 
 ## What must not change

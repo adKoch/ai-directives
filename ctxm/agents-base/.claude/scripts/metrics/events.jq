@@ -4,8 +4,8 @@
 # copy of the earlier runs: same ids, same times. So an event is known by its id, and each copy names a holder:
 #   in a run's transcript           the run (its agent id)
 #   in a session's own transcript   the session its records name
-# A copy names the earlier session or the new one, so the holders alone do not say whose the event is: what the
-# lines have counted and where the metrics start decide it (owner_of), the same in every collection.
+# An event the record holds (counted.jq) is settled: no line counts it again, whichever files still hold it. Of the
+# others, the times the sessions' records end decide whose each is (owner_of), never the order of the ids.
 # Pure; with_owned_events takes the collection of lines.jq. Read from the bottom (with_owned_events) up.
 
 # The holder an event (the input) has by the transcript that holds it.
@@ -35,23 +35,23 @@ def held_events: [claimed_events] | group_by(.id) | map(one_event);
 # The events (the input, each with its `owner`) by their owner (`run/<agent id>`, `session/<session id>`).
 def by_owner: group_by(.owner) | map({key: .[0].owner, value: .}) | from_entries;
 
-# Whether a line of the session (in the collection, the input) counted what the session held at that time, or the
-# session ended before the start, so that nothing it held is ever counted.
-def has_settled($session; $time):
-  any(.counted_spans[$session][]?; .from <= $time and $time <= .to) or (.last[$session] // infinite) <= .start;
-
-# Whose an event is, of its holders: a run that holds it; else a session that has settled it; else the first by
-# name. So a copy that names the new session never takes an event from the session that counted it, nor brings one
-# back from before the start.
+# Whose an event is, of its holders: a run that holds it; else the session whose records end first, the first by
+# name when two end at the same moment. Times, not ids, decide, so the same transcripts give the same lines whatever
+# order their ids sort in; and a session that ended before the start ends before any session that copied it after
+# the start, so what it holds is never written through a copy.
 def owner_of($event):
   . as $collection
   | $event.holders
   | if .[0] | startswith("run/") then .[0]
-    else first(.[] | select(ltrimstr("session/") as $session | $collection | has_settled($session; $event.time)))
-      // .[0]
+    else min_by([$collection.last[ltrimstr("session/")], .])
     end;
 
-# The collection (the input) with the events of its transcripts, each with its owner, by owner.
+# The collection (the input) with the events of its transcripts that the record does not hold, each with its owner,
+# by owner.
 def with_owned_events($transcripts):
   . as $collection
-  | .events = ($transcripts | held_events | map(. as $event | .owner = ($collection | owner_of($event))) | by_owner);
+  | .events = (
+      $transcripts | held_events
+      | map(select($collection.counted[.id] == null) | . as $event | .owner = ($collection | owner_of($event)))
+      | by_owner
+    );

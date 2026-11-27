@@ -47,10 +47,11 @@ test_the_working_files_of_a_killed_collector_are_removed_and_those_of_a_live_one
   printf 'x\n' >"$METRICS/notes.new.synthetic"
   collected
   kill "$alive"
-  assert_prints "notes.new.synthetic
+  assert_prints "counted.csv
+notes.new.synthetic
 start
 tasks.csv
-tasks.csv.new.$alive" ls "$METRICS"
+tasks.csv.new.$alive" metrics_files
 }
 
 # catches: the collector reading a repository named by the caller's environment (a git hook sets GIT_DIR and more)

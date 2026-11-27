@@ -2,8 +2,8 @@
 # closed main session. The rules are in docs/metrics-format.md of the template library ("What becomes a line").
 # The input of `plan` lists the facts: the project's setups (setup.jq, newest first) and one entry per transcript
 # (facts.jq) with its `kind` ("run" with its `agent`, `finished` and `role`, or "session").
-# Pure; needs format.jq, events.jq, report.jq, holdings.jq, rollup.jq and rollup_text.jq. Read from the bottom
-# (plan) up.
+# Pure; needs format.jq, counted.jq, events.jq, report.jq, holdings.jq, rollup.jq and rollup_text.jq. Read from the
+# bottom (plan) up.
 
 # The setup in force at a time, from the setups, newest first.
 def setup_at($time): first(.[] | select(.since <= $time)) // {absent: true};
@@ -74,12 +74,13 @@ def session_line($session; $events; $setup):
   + ($events | counted)
   + fingerprint_of($setup);
 
-# The part of a session's new events under one setup.
+# The part of a session's new events under one setup, with the events it holds (their keys).
 def part_outcome($session; $events):
   (.setups | setup_at($events[0].time)) as $setup
   | if ($events | has_unplain_model) then {skipped: "unplain"}
     else under($setup; session_line($session; $events; $setup))
-    end;
+    end
+  | .events = ($events | map(.id));
 
 # What tells setups apart: the fingerprint; a setup without one (no lock, a problem) by its commit.
 def setup_key: if .fingerprint then .fingerprint else {commit} end;
@@ -93,29 +94,35 @@ def in_setup_parts($setups):
       | if length > 0 and .[-1].key == $key then .[-1].events += [$event] else . + [{key: $key, events: [$event]}] end)
   | map(.events);
 
+# A part that is not written is passed over for good once a later part of its session has its line (the input lists
+# the parts' outcomes in time order).
+def with_parts_passed:
+  ([to_entries[] | select(.value.line != null) | .key] | max // -1) as $last_written
+  | to_entries
+  | map(.value + if .key < $last_written and .value.line == null then {passes: .value.events} else {} end);
+
+# What another session also holds of a session that ended before the start is passed over for good, so that no copy
+# writes it once the session's own transcript is gone.
+def shared_events($events): $events | map(select(.holders | length > 1) | .id);
+
 # A session is written when it is closed, and only if it ended after the start: then whole, one line per setup.
 def session_outcomes($session; $events):
   . as $collection
   | if .last[$session] > .now - quiet_seconds then [{skipped: "open"}]
-    elif .last[$session] <= .start then [{skipped: "before_start"}]
+    elif .last[$session] <= .start then [{skipped: "before_start", passes: shared_events($events)}]
     else $events
       | in_setup_parts($collection.setups)
       | map(. as $part | $collection | part_outcome($session; $part))
+      | with_parts_passed
     end;
-
-# The events of a session that its lines have not counted yet: the ones after the last event of its lines.
-def new_events($session):
-  . as $collection
-  | .events["session/\($session)"]
-  | map(select(.time > ($collection.counted_until[$session] // -infinite)));
 
 def sessions_with_events: .events | keys | map(select(startswith("session/")) | ltrimstr("session/"));
 
+# The events the record does not hold yet are the new ones (events.jq): a session with any has outcomes.
 def all_session_outcomes:
   . as $collection
   | sessions_with_events
-  | map(. as $session | $collection | new_events($session) | select(length > 0) | [$session, .])
-  | map(. as [$session, $events] | $collection | session_outcomes($session; $events)[]);
+  | map(. as $session | $collection | session_outcomes($session; $collection.events["session/\($session)"])[]);
 
 # The outcomes, unless one of them refuses the collection.
 def unless_refused: (map(.refused // empty) | first) as $why | if $why == null then . else refuse($why) end;
@@ -130,8 +137,8 @@ def is_transcript: .kind == "run" or .kind == "session";
 
 def facts_of($kind): map(select(.kind == $kind));
 
-# What the lines are decided from: the readable transcripts, their events, and what tasks.csv and the start say.
-# The plans, commits and release candidates are for the roll-ups only.
+# What the lines are decided from: the readable transcripts, their events, and what tasks.csv, its record and the
+# start say. The plans, commits and release candidates are for the roll-ups only.
 def collection($facts; $settings):
   ($settings.written | written_lines) as $written
   | ($facts | map(select(is_transcript and .unreadable == 0))) as $transcripts
@@ -142,8 +149,8 @@ def collection($facts; $settings):
       setups: ($facts | facts_of("setup")),
       transcripts: $transcripts,
       last: ($transcripts | last_records),
-      counted_spans: ($written | counted_spans),
-      counted_until: ($written | counted_until),
+      counted: ($settings.counted | counted_events($settings.written; $written)),
+      written_count: ($written | length),
       written_agents: ($written | written_agents),
       plans: ($facts | facts_of("plan") | map(select(.name != null))),
       commits: ($facts | facts_of("commits")),
@@ -162,21 +169,29 @@ def unreadable_counts($facts): {
   left_out_plans: ($facts | map(select(.kind == "plan" and .name == null)) | length)
 };
 
+# The record afterwards, or null when the collection adds neither a line nor a row: tasks.csv and its record are
+# written together or not at all.
+def record_after($settings; $writing; $rows):
+  if $writing == [] and $rows == [] then null else $settings.counted | with_rows_added($rows) end;
+
 def planned($facts; $settings):
-  collection($facts; $settings)
-  | (run_outcomes + all_session_outcomes | unless_refused) as $outcomes
-  | ($outcomes | map(.line // empty) | sort_by([.end, .start, .session, .agent])) as $lines
-  | ($settings.written | with_lines_added($lines)) as $content
+  collection($facts; $settings) as $collection
+  | ($collection | run_outcomes + all_session_outcomes | unless_refused) as $outcomes
+  | ($outcomes | map(select(.line != null)) | sort_by(.line | [.end, .start, .session, .agent])) as $writing
+  | ($writing | new_rows($collection.written_count; [$outcomes[].passes[]?])) as $rows
+  | ($settings.written | with_lines_added($writing | map(.line))) as $content
   | {
-      added: ($lines | length),
+      added: ($writing | length),
       content: $content,
-      result: ($lines | result),
-      rollups: rollups_after($content),
+      counted: record_after($settings; $writing; $rows),
+      result: ($writing | map(.line) | result),
+      rollups: ($collection | rollups_after($content)),
       notes: ($outcomes | skipped_counts + unreadable_counts($facts) | notes)
     };
 
-# The plan of a collection, from the facts (the inputs) and the settings {project, now, start, written}: what
-# tasks.csv holds afterwards, the result, the roll-ups and the notes; or the refusal, when nothing may be written.
+# The plan of a collection, from the facts (the inputs) and the settings {project, now, start, written, counted}:
+# what tasks.csv and its record hold afterwards (the record null when neither changes), the result, the roll-ups and
+# the notes; or the refusal, when nothing may be written.
 def plan($settings):
   [inputs] as $facts
   | try planned($facts; $settings)

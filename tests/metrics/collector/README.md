@@ -5,58 +5,65 @@ The collector is `ctxm/agents-base/.claude/scripts/collect-metrics.sh` with the 
 page says how it is built, how it is tested and how to extend it.
 
 ## Reading order
-1. `docs/metrics-format.md`: the files, the columns, "What becomes a line".
+1. `docs/metrics-format.md`: the files, the columns, "What becomes a line", "The record".
 2. `collect-metrics.sh`, top to bottom: `main` is the whole flow (tools, project, store, then the first collection
    or a later one); `collect` shows how a plan becomes a write.
 3. `metrics/format.jq`: the columns, the fixed words, the patterns, the one place a line is written.
 4. `metrics/facts.jq`, from the bottom (`transcript_facts`) up: a transcript in, facts out.
-5. `metrics/events.jq`: each call and compaction once, and whose it is.
+5. `metrics/counted.jq`, then `metrics/events.jq`: the record of what the lines counted, by id, and how it is
+   checked against `tasks.csv`; each call and compaction once, which of them the record holds, and whose the others
+   are.
 6. `metrics/lines.jq`, from the bottom (`plan`) up: facts in, lines out. `metrics/report.jq`: the words.
 7. `metrics/setup.jq` and `metrics/project.sh`: a commit's lock and agent files become a fingerprint.
 8. `metrics/rollup.jq` and `metrics/rollup_text.jq`, from the bottom up: lines, commits and plans become a roll-up
    and its text.
 9. `metrics/plans.sh`, `metrics/rollup_facts.jq`, `metrics/transcripts.sh`, `metrics/store.sh`, `metrics/tools.sh`,
    `metrics/program.sh`, `metrics/telling.sh`: the edges.
-10. `collecting.sh`, then `runs.test.sh`: how a test is written; `../rollup/rolling.sh` and `figures.test.sh` for a
-    roll-up.
+10. `collecting.sh`, then `runs.test.sh`: how a test is written; `copies.test.sh` for a case in both id orders;
+    `../rollup/rolling.sh` and `figures.test.sh` for a roll-up.
 
 ## The pattern
 | Layer | Files | Does |
 |---|---|---|
 | Entry | `collect-metrics.sh` | reads the options, checks the tools, wires the ports to the rules, prints; decides nothing |
-| Ports (bash) | `project.sh` (git, read-only), `transcripts.sh` (the transcripts folder, read-only), `plans.sh` (the plans, the commits' subjects and the release candidates, read-only), `store.sh` (`ctxm/metrics/`, the only writer), `tools.sh` (the tool requirement), `telling.sh` (what the collector prints) | every effect; each turns what it reads into JSON facts or text for the rules |
-| Rules (jq, pure) | `format.jq`, `facts.jq`, `setup.jq`, `events.jq`, `holdings.jq`, `lines.jq`, `report.jq`, `rollup.jq`, `rollup_text.jq`, `rollup_facts.jq` | every decision; they read their input and arguments and write nothing |
+| Ports (bash) | `project.sh` (git, read-only), `transcripts.sh` (the transcripts folder, read-only), `plans.sh` (the plans, the commits' subjects and the release candidates, read-only), `store.sh` (`ctxm/metrics/`, the only writer, `tasks.csv` and its record `counted.csv` included), `tools.sh` (the tool requirement), `telling.sh` (what the collector prints) | every effect; each turns what it reads into JSON facts or text for the rules |
+| Rules (jq, pure) | `format.jq`, `facts.jq`, `setup.jq`, `counted.jq`, `events.jq`, `holdings.jq`, `lines.jq`, `report.jq`, `rollup.jq`, `rollup_text.jq`, `rollup_facts.jq` | every decision; they read their input and arguments and write nothing |
 | The seam | `program.sh`: `metrics_jq "<modules>" '<filter>' <jq options>` | joins the named modules into one program, in the order given |
 
 The flow of a collection: the ports print one JSON object per setup, session and run (the facts); `lines.jq`'s `plan`
-takes them with the settings `{project, now, start, written}` and gives `{added, content, result, rollups, notes}` or
-`{refusal}`; `rollups` holds `{plan, content}` for each plan that has lines, made from the lines `content` holds. The
-entry prints the notes and the result, checks every roll-up's place, prepares `content` and the roll-ups with
-`prepare_file`, and renames them together with `publish_prepared`.
+takes them with the settings `{project, now, start, written, counted}` (the texts of `tasks.csv` and of its record,
+empty when a file is not there) and gives `{added, content, counted, result, rollups, notes}` or `{refusal}`;
+`counted` is the record afterwards, or null when the collection adds neither a line nor a row; `rollups` holds
+`{plan, content}` for each plan that has lines, made from the lines `content` holds. The entry prints the notes and
+the result, checks every roll-up's place, prepares the roll-ups, then the record and `content` with
+`prepare_file`, and renames them together, in that order, with `publish_prepared`.
 
 ## The test helpers (`collecting.sh`)
 | Helper | Does |
 |---|---|
 | `project <history>`, `started_project <history> [<start>]` | builds `./project` from a history (this folder's `histories/`, else the fixtures'); the second with `ctxm/metrics/start` as a first collection left it |
 | `transcripts <shape> [<minute>]` | builds `./transcripts` from a shape (this folder's `shapes/`, else the fixtures'); `TRANSCRIPTS_EPOCH` moves its minute 0, `minutes_ago <n>` gives a time relative to now |
+| `transcripts_in_id_order <given\|reversed> <shape> [<minute>]` | the same, with the session ids as the shape has them or in reversed order (`../support/shapes.jq`): a test that loops over both shows that no line depends on how the ids sort |
 | `collect`, `collect_with <options>`, `run_collector <arguments>`, `collected` | run the collector as a program, in an empty environment but the `PATH` and a home of the test's own; `./stdout`, `./stderr`, `./status`; `collected` fails unless the status is 0 |
 | `run_collector_into_a_closed_pipe <arguments>`, `in_collector_environment <command>` | the same with stdout a pipe nobody reads; the environment alone, for a command that names variables (`GIT_DIR`) or runs the collector some other way |
 | `line_fields <agent or session id> <columns>` , `line_count` | read `tasks.csv` by column name |
 | `assert_no_text_got_out` | fails when the mark of the shapes' free text stands in `ctxm/metrics/`, `./stdout` or `./stderr` |
 | `written_files` | the project's files git does not know: everything the collector may have written |
+| `metrics_files` | the names of the files in `ctxm/metrics/`, in byte order, so no locale changes the list |
 
 The collector reads the clock, so a test never waits: it places the transcripts in time instead (the epoch long
 past for a closed session, `minutes_ago 20` for an open one) and writes the start record it needs. A project built
 in a test folder has its own repository; the collector refuses a folder that is not the top of one, so it never
 reads the library's history.
 
-Test files: `runs.test.sh` (run lines), `sessions.test.sh` (main's lines, copies), `start.test.sh` (the start),
-`refusals.test.sh` (what stops a collection), `text.test.sh` (no text gets out), `format.test.sh` (the page,
-the header and an earlier header), `store.test.sh` (the collector's own working files, its tools and its
-environment). The roll-up tests are in `../rollup/`: `figures.test.sh` (the figures), `refusals.test.sh` (what a
-roll-up refuses or leaves out) and `writing.test.sh` (roll-ups and lines all or nothing); `rolling.sh` adds plans
-and commits to a project and looks for its shapes and histories in its own folder first (`SCENARIOS`). A new test
-file is named in `scripts/lib/test-files.sh`.
+Test files: `runs.test.sh` (run lines), `sessions.test.sh` (main's lines, copies), `copies.test.sh` (copies,
+chains and deletions: each call once, in both id orders), `record.test.sh` (the record's refusals and its
+write), `start.test.sh` (the start), `refusals.test.sh` (what stops a collection), `text.test.sh` (no text gets
+out), `format.test.sh` (the page, the headers and an earlier header), `store.test.sh` (the collector's own working
+files, its tools and its environment). The roll-up tests are in `../rollup/`: `figures.test.sh` (the
+figures), `refusals.test.sh` (what a roll-up refuses or leaves out) and `writing.test.sh` (roll-ups and lines all
+or nothing); `rolling.sh` adds plans and commits to a project and looks for its shapes and histories in its own
+folder first (`SCENARIOS`). A new test file is named in `scripts/lib/test-files.sh`.
 
 ## Adding a metric (a column)
 Worked example: `compactions`.
@@ -102,6 +109,24 @@ To read another format as well:
    fixed word or a checked name stops the collection.
 4. A test in `../rollup/figures.test.sh` that compares the figure with the sum of the lines it names.
 
+## Adding a kind of event the record holds
+The record (`counted.csv`) holds every event of a main session's line, by kind and id, so that whether it was
+counted never rests on times. Worked example: `compaction`, the second kind after `call`.
+1. `facts.jq`: the event under the key `<kind>/<id>` in `events` (`add_compaction` puts `compaction/<uuid>`), its id
+   checked against a pattern of `format.jq` (`is_record_id`) that starts with a letter or a digit, so it is a field.
+   A transcript whose id does not fit is counted as not read whole.
+2. `counted.jq`: the kind in `is_event_of`, with its pattern; nothing else there names a kind.
+3. `docs/metrics-format.md`: the kind in "The record" (the `kind` row), the id's shape in "What a value may look
+   like".
+4. `lines.jq` counts the kind per line (`counted`), as "Adding a metric" says; `events.jq` and the record take any
+   event of the facts as they are.
+5. Tests: a shape whose copies hold the kind and whose original is then deleted, as `copies.test.sh` does for calls
+   and `sessions.test.sh` for a compaction (`forked-session`); a row of the kind with an id of another shape in
+   `test_a_record_with_a_row_that_is_no_row_of_the_record_is_refused_and_left_byte_for_byte` (`record.test.sh`).
+
+A run's events have no rows: a run is counted once by its agent id, and its transcript is not read again once it
+has its line. Giving runs rows is a new rule for the format page first.
+
 ## Adding a refusal or an abuse case
 A value read from outside gets a pattern in `format.jq` and is checked where it is read (`facts.jq`, `setup.jq`);
 a place on disk is checked in its port. Decide which of the two answers it gets: left out and counted (one
@@ -116,12 +141,16 @@ payload holds the mark), `refusals.test.sh` for the project.
   old file it could not put back is never removed: `refuse_unsettled_files` stops every later collection until a
   person settles it). No temporary file anywhere else: facts travel through pipes and arguments. A roll-up is
   written only for a plan file of `ctxm/plans/`; no other file of `ctxm/metrics/` is read or changed.
+- Whether an event was counted is read from the record, never from the times of the lines. The record is written
+  only with `tasks.csv`, renamed just before it, and only adds rows; a record or a `tasks.csv` it cannot read, or
+  that is out of step with the other, is refused, never rebuilt from the transcripts. An uncounted event's owner is
+  decided by times (`owner_of`), never by the order of the ids alone.
 - Only `facts.jq` knows a transcript's key names, and nothing but numbers, ids and names that pass `format.jq`
   leaves it. A report's text stops at its last line: only the two counts of a `Findings:` line are kept. `setup.jq`
   is the same for the lock and the agent files.
 - Every pattern is used through `matches`, which anchors at the true end of the value: `$` accepts a line break
   there.
-- Every line is written by `csv_line`; no other code joins fields.
+- Every line is written by `csv_line` and every row of the record by `record_row`; no other code joins fields.
 - A rule module has no effect and reads no clock: the entry passes `now` in.
 - The tools are checked before anything is read; the collector ends with 0 or 1.
 - jq modules are joined by `metrics_jq`, never included in each other (jq 1.8.2 stops on a module that includes a

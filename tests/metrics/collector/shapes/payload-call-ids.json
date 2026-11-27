@@ -1,0 +1,14 @@
+{
+  "about": "Main sessions that each make one call whose message id is no id: a comma, a quote, a line break, a leading =, - or _, a control character, and 129 characters. Each id holds the mark, so a search finds any of it. One more session makes one call with a plain id (1 input token): the only line, and the only row of the record.",
+  "sessions": [
+    {"id": "78787878-0000-4000-8000-000000000001", "model": "claude-synthetic-large", "events": [{"minute": 0, "call": "msg_synthetic-text,comma", "usage": {"input_tokens": 2, "output_tokens": 0, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}}]},
+    {"id": "78787878-0000-4000-8000-000000000002", "model": "claude-synthetic-large", "events": [{"minute": 1, "call": "msg_synthetic-text\"quote", "usage": {"input_tokens": 2, "output_tokens": 0, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}}]},
+    {"id": "78787878-0000-4000-8000-000000000003", "model": "claude-synthetic-large", "events": [{"minute": 2, "call": "msg_synthetic-text\nline", "usage": {"input_tokens": 2, "output_tokens": 0, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}}]},
+    {"id": "78787878-0000-4000-8000-000000000004", "model": "claude-synthetic-large", "events": [{"minute": 3, "call": "=synthetic-text", "usage": {"input_tokens": 2, "output_tokens": 0, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}}]},
+    {"id": "78787878-0000-4000-8000-000000000005", "model": "claude-synthetic-large", "events": [{"minute": 4, "call": "-synthetic-text", "usage": {"input_tokens": 2, "output_tokens": 0, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}}]},
+    {"id": "78787878-0000-4000-8000-000000000006", "model": "claude-synthetic-large", "events": [{"minute": 5, "call": "_synthetic-text", "usage": {"input_tokens": 2, "output_tokens": 0, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}}]},
+    {"id": "78787878-0000-4000-8000-000000000007", "model": "claude-synthetic-large", "events": [{"minute": 6, "call": "msg_synthetic-text\u0007bell", "usage": {"input_tokens": 2, "output_tokens": 0, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}}]},
+    {"id": "78787878-0000-4000-8000-000000000008", "model": "claude-synthetic-large", "events": [{"minute": 7, "call": "msg_synthetic-text_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", "usage": {"input_tokens": 2, "output_tokens": 0, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}}]},
+    {"id": "78787878-0000-4000-8000-000000000009", "model": "claude-synthetic-large", "events": [{"minute": 8, "call": "msg_synthetic_plain_id", "usage": {"input_tokens": 1, "output_tokens": 0, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}}]}
+  ]
+}

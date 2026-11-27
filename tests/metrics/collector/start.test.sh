@@ -55,7 +55,7 @@ test_after_deleting_the_start_and_the_lines_nothing_that_ended_before_is_written
   transcripts finished-run
   collected
   assert_prints 2 line_count
-  rm "$METRICS/start" "$METRICS/tasks.csv"
+  rm "$METRICS/start" "$METRICS/tasks.csv" "$METRICS/counted.csv"
   collected
   collected
   assert_prints '?? ctxm/metrics/start' written_files

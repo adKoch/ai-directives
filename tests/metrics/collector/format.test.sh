@@ -24,6 +24,17 @@ test_the_header_the_collector_writes_is_the_column_list_of_the_format_page() {
   assert_prints "$header" head -n 1 "$METRICS/tasks.csv"
 }
 
+# catches: a column of the record of what the lines counted added, renamed or moved in the collector but not on the
+# page that defines it (or the other way round).
+test_the_header_of_the_record_is_its_column_list_on_the_format_page() {
+  local header
+  started_project one-setup
+  transcripts finished-run
+  collected
+  header="$(names_under 'The record')"
+  assert_prints "$header" head -n 1 "$METRICS/counted.csv"
+}
+
 # Fails when the mark of the shapes' free text stands in what the collector said.
 assert_no_text_got_out_of_the_output() {
   [[ "$(<stdout)$(<stderr)" != *synthetic-text* ]] || fail "text of tasks.csv stands in what the collector said"
@@ -56,6 +67,8 @@ test_a_lines_file_under_an_earlier_header_moves_to_the_new_header_keeping_its_li
   collected
   cut -d, -f1-17 "$METRICS/tasks.csv" | grep -v ',main,' >old.csv
   cp old.csv "$METRICS/tasks.csv"
+  # A file of runs' lines only: its record holds no row (a run is counted by its agent id).
+  printf 'line,kind,id\n' >"$METRICS/counted.csv"
   collected
   header="$(names_under Columns)"
   { printf '%s\n' "$header"; tail -n +2 old.csv | sed 's/$/,unknown,unknown/'; } >moved.csv
