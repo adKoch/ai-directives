@@ -1,6 +1,7 @@
 # The comparison of setups: the roll-ups of the projects given, read back (reading.jq), grouped into setups and
-# laid side by side by plan and by item. The input is the list of facts projects.sh prints: {kind: "project",
-# project, shown} for each project given and {kind: "rollup", project, file, shown, text} for each roll-up file.
+# laid side by side: a column for each setup and plan, whatever the plans are named, and the items matched by task
+# name across the columns. The input is the list of facts projects.sh prints: {kind: "project", project, shown} for
+# each project given and {kind: "rollup", project, file, shown, text} for each roll-up file.
 # `shown` is a place as it may be printed, escaped by projects.sh. Pure; needs the collector's format.jq,
 # rollup.jq and rollup_text.jq, and reading.jq, figures.jq and comparison_text.jq. Read from the bottom
 # (comparison) up.
@@ -40,14 +41,15 @@ def setups($shown):
       rollups: (.value | map(.rollup))
     });
 
-# The roll-ups of the plan, each with its setup's number: [{setup, rollup}].
-def plan_columns($plan): map(.setup as $setup | .rollups[] | select(.plan == $plan) | {setup: $setup, rollup: .});
+# A plan name as it sorts among a setup's plans: its numbers as numbers, so `v0.9` comes before `v0.10`.
+def plan_order: [scan("[0-9]+|[^0-9]+") | tonumber? // .];
 
+# A column for each roll-up of each setup, in the setups' order and then their plans': [{setup, plan, rollup}].
+# Plans of different names stand side by side: later releases of one project, or the plans of different projects.
+def columns: map(.setup as $setup | .rollups | sort_by(.plan | plan_order) | .[] | {setup: $setup, plan, rollup: .});
+
+# The task names of every column's items, each once: an item that only one column has gets `none` in the others.
 def item_names: [.[].rollup.items[].item] | unique;
-
-def plan_view($plan): plan_columns($plan) | {plan: $plan, columns: ., items: item_names};
-
-def plans: . as $setups | [map(.rollups[].plan) | unique | .[] | . as $plan | $setups | plan_view($plan)];
 
 def shown_projects: map(select(.kind == "project") | {key: (.project | tostring), value: .shown}) | from_entries;
 
@@ -55,7 +57,8 @@ def compared:
   shown_projects as $shown
   | map(select(.kind == "rollup") | read_fact)
   | setups($shown)
-  | {setups: map(del(.rollups)), plans: plans};
+  | columns as $columns
+  | {setups: map(del(.rollups)), columns: $columns, items: ($columns | item_names)};
 
 # What compare-setups.sh prints: {text}, or {refusal} with the one line that says why nothing is shown.
 def comparison:

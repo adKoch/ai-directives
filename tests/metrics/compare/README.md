@@ -27,17 +27,19 @@ refuses: `docs/compare-setups.md`. This page says how it is built, how it is tes
 The flow: `find_rollups` checks every project folder and every `.md` file of its `ctxm/metrics/` and keeps the
 list; `rollup_facts` prints `{kind: "project", project, shown}` and `{kind: "rollup", project, file, shown, text}`;
 `comparison` takes them all (`--slurp`) and gives `{text}` or `{refusal}`. `read_rollup` reads each text back into
-the object `rollup_of` makes; `setups` groups the roll-ups by project and fingerprints; `plans` lays each plan out
-with a column per setup that has it.
+the object `rollup_of` makes; `setups` groups the roll-ups by project and fingerprints; `columns` makes a column
+of each setup and plan, whatever the plans are named (in `plan_order`: `v0.9` before `v0.10`); `item_names`
+lists every task name of every column once, matched by name, `none` in a column without it.
 
 ## The test helpers (`comparing.sh`)
 | Helper | Does |
 |---|---|
 | `rolled_up_project <folder> <history> [<start>]` | builds `<folder>/project` with the plan `REQ-900` and the runs of `reviewed-items` (`../rollup/`), started at the time, and collects it with the real collector: its roll-up is what a project holds |
+| `rolled_up_project_with_plans <folder> <history> <start> <plan> <text>...` | the same with the plans given (a name and a text each) instead of `REQ-900`: a roll-up for each plan whose items ran; `''` as the start for the default |
 | `compare <arguments>`, `compared <arguments>` | run the command as a person does, in an empty environment with a UTF-8 locale and a `TMPDIR` in the test folder; `./stdout`, `./stderr`, `./status`, `./files-before`, `./checkout-before`; `compared` fails unless the status is 0. `COMPARISON_PATH` narrows its `PATH` |
 | `compare_into_a_closed_pipe <arguments>` | the same, with stdout a pipe nobody reads |
 | `compare_into_a_full_device <arguments>` | the same, with stdout `/dev/full` |
-| `figure_row <heading> <figure>` | the row of a figure in a section (`Plan REQ-900`, `Item <task>`) of what was printed |
+| `figure_row <heading> <figure>` | the row of a figure in a section (`Plans`, `Item <task>`, `Setups`) of what was printed |
 | `assert_nothing_written` | fails unless the test folder with its `TMPDIR`, and the library checkout (but `.git`, `.cache/tests`, `.cache/check`), are as they were before the last comparison: every file's size, inode and times |
 
 A scenario's numbers differ between projects by when their metrics start: a later start leaves the runs that

@@ -1,20 +1,21 @@
 # The comparison of setups (`scripts/compare-setups.sh`)
 
 The template library's command that compares template setups: it reads the roll-ups the collector wrote into each
-project's `ctxm/metrics/` (`docs/metrics-format.md`, "The roll-ups") and shows the setups side by side: for each
-plan its cost, the items at the round limit, the escaped defects and the owner's questions; for each of its items
-its cost and its rounds. It reads nothing else and writes nothing, anywhere. How it is built and extended:
-`tests/metrics/compare/README.md`.
+project's `ctxm/metrics/` (`docs/metrics-format.md`, "The roll-ups") and shows the setups side by side, a column
+for each setup and plan, whatever the plans are named: for each plan its cost, the items at the round limit, the
+escaped defects and the owner's questions; for each item, matched by task name, its cost and its rounds. It reads
+nothing else and writes nothing, anywhere. How it is built and extended: `tests/metrics/compare/README.md`.
 
 ## Usage
 What `--help` prints (`scripts/compare/help.txt`; a test compares the two):
 
 ```text
 usage: compare-setups.sh [--help] [--] <project folder>...
-Shows the setups of the projects given side by side, read from the roll-ups in each project's ctxm/metrics/: for
-each plan its cost, the items at the round limit, the escaped defects and the owner's questions; for each of its
-items its cost and its rounds. A setup is a project with its templates and roles (the fingerprint). It reads only
-ctxm/metrics/*.md and writes nothing.
+Shows the setups of the projects given side by side, read from the roll-ups in each project's ctxm/metrics/: a
+column for each setup and plan, whatever the plans are named; for each plan its cost, the items at the round limit,
+the escaped defects and the owner's questions; for each item, matched by task name, its cost and its rounds. A
+setup is a project with its templates and roles (the fingerprint). It reads only ctxm/metrics/*.md and writes
+nothing.
   <project folder>  the folder of a project whose metrics the collector wrote; 1 to 8 of them
   --help            print this text
   --                every argument after it is a project folder
@@ -47,17 +48,20 @@ with the current templates. `tasks.csv`, `start` and every other file of the fol
   templates in another order are another setup). Each setup is numbered and listed with its fingerprints. A roll-up
   made under several fingerprints (a `ctxm update` during the plan) is one setup with a row for each: its numbers
   cannot be told apart.
-- **A plan**: a section per plan name found in any project, with a column for each setup that has a roll-up of it:
-  `coverage`, the number of items, the plan's cost (runs, the four kinds of tokens, never added together, wall
-  seconds, compactions), the items at the round limit, the defects found at tests, the release candidates, the
-  owner's change requests at a candidate and the questions brought to the owner. The escapes and the owner's
-  questions stand by plan, not by item: a roll-up counts them for the whole plan.
-- **An item**: a section per item of the plan, with the same columns: its rounds and its cost. Items are matched by
-  their task name, so two projects that ran the same plan stand side by side.
+- **Plans**: one table with a column for each setup and plan (`setup 1, v0.9`), whatever the plans are named, so
+  later releases of one project and the plans of different projects stand side by side. The columns follow the
+  setups' numbers, and within a setup its plan names with their numbers read as numbers (`v0.9` before `v0.10`).
+  Each column shows `coverage`, the number of items, the plan's cost (runs, the four kinds of tokens, never added
+  together, wall seconds, compactions), the items at the round limit, the defects found at tests, the release
+  candidates, the owner's change requests at a candidate and the questions brought to the owner. The escapes and the
+  owner's questions stand by plan, not by item: a roll-up counts them for the whole plan.
+- **Items**: a section per task name found in any column, each listed once, with the same columns: its rounds and
+  its cost. Items are matched by their task name, so two projects that ran the same plan stand side by side item by
+  item; an item that no other column has is shown in its own column, with `none` in the others.
 - `coverage` `partial`: the project's metrics start after the plan's first commit, so what ended before the start
   is in no number of that plan; the plan is shown, never read as whole.
-- `none`: the setup has no line of that item. `unknown`: the roll-up has no source for the figure (the stop rule of
-  `docs/metrics-format.md`).
+- `none`: the column's plan has no line of that item. `unknown`: the roll-up has no source for the figure (the stop
+  rule of `docs/metrics-format.md`).
 
 A place a person gave (a project folder, a file of it) is printed escaped, as bash's `%q` writes it in the C locale:
 a control character, an escape sequence, a character that turns text around and a byte that is no UTF-8 are written

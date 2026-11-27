@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# The comparison of setups: the roll-ups of several projects, a setup to a column, by plan and by item, read
-# without a write.
+# The comparison of setups: the roll-ups of several projects side by side, a column for each setup and plan, by
+# plan and by item, read without a write.
 # shellcheck source=comparing.sh
 source "$(dirname "${BASH_SOURCE[0]}")/comparing.sh"
 
@@ -12,6 +12,13 @@ readonly BEFORE_THE_FINAL_TEST=2026-01-05T09:50:00Z
 readonly COMMIT=1111111111111111111111111111111111111111
 readonly ALPHA_TEMPLATES=agents-base@$COMMIT+coding@$COMMIT BETA_TEMPLATES=coding@$COMMIT+agents-base@$COMMIT
 readonly ROLES=inspector=claude-synthetic-small/medium+reviewer=claude-synthetic-large/unknown
+# Two release plans of one project, the items of reviewed-items split between them.
+# shellcheck disable=SC2016 # the backticks are the plans' own
+readonly V09_TEXT='**1A standard-worker: synthetic-text the first** (task `REQ-900-1A-first-example`)
+
+**1B standard-worker: synthetic-text the second** (task `REQ-900-1B-second-example`)'
+# shellcheck disable=SC2016 # the backticks are the plan's own
+readonly V010_TEXT='**T1 release-tester** (`REQ-900-T1-final-test`)'
 
 # catches: one setup's figures shown in another's column, a figure of the plan taken for an item's, two
 # fingerprints that differ only in the order of their templates taken for one setup, or a comparison that writes.
@@ -24,10 +31,10 @@ test_two_projects_with_different_fingerprints_are_shown_side_by_side_per_item() 
   assert_prints '| runs | 5 | 4 |' figure_row 'Item REQ-900-1A-first-example' runs
   assert_prints '| rounds | 2 | 2 |' figure_row 'Item REQ-900-1A-first-example' rounds
   assert_prints '| cache read tokens | 1000 | 1000 |' figure_row 'Item REQ-900-1B-second-example' 'cache read tokens'
-  assert_prints '| runs | 7 | 6 |' figure_row 'Plan REQ-900' runs
-  assert_prints '| defects found at tests | 1 | 1 |' figure_row 'Plan REQ-900' 'defects found at tests'
+  assert_prints '| runs | 7 | 6 |' figure_row Plans runs
+  assert_prints '| defects found at tests | 1 | 1 |' figure_row Plans 'defects found at tests'
   assert_prints '| questions brought to the owner | unknown | unknown |' \
-    figure_row 'Plan REQ-900' 'questions brought to the owner'
+    figure_row Plans 'questions brought to the owner'
   assert_prints '' cat stderr
   assert_nothing_written
 }
@@ -38,7 +45,7 @@ test_a_rollup_whose_metrics_start_after_its_plan_was_first_committed_is_shown_pa
   rolled_up_project alpha one-setup
   rolled_up_project beta one-setup "$AFTER_THE_FIRST_RUN"
   compared alpha/project beta/project
-  assert_prints '| coverage | whole | partial |' figure_row 'Plan REQ-900' coverage
+  assert_prints '| coverage | whole | partial |' figure_row Plans coverage
 }
 
 # catches: an item that one setup has no run of shown with zeros, or with another item's figures, in that column.
@@ -48,7 +55,7 @@ test_an_item_a_setup_has_no_line_of_reads_none_in_its_column() {
   compared alpha/project gamma/project
   assert_prints '| runs | 5 | none |' figure_row 'Item REQ-900-1A-first-example' runs
   assert_prints '| runs | 1 | 1 |' figure_row 'Item REQ-900-T1-final-test' runs
-  assert_prints '| items | 3 | 1 |' figure_row 'Plan REQ-900' items
+  assert_prints '| items | 3 | 1 |' figure_row Plans items
 }
 
 # catches: a roll-up made under two setups shown under one of them only, so that its numbers pass for that setup's
@@ -57,7 +64,39 @@ test_a_rollup_made_under_two_setups_is_one_setup_listed_with_each() {
   rolled_up_project delta template-update
   compared delta/project
   assert_prints 2 grep --count '^| 1 | project | delta/project | ' stdout
-  assert_prints '| figure | setup 1 |' figure_row 'Plan REQ-900' figure
+  assert_prints '| figure | setup 1, REQ-900 |' figure_row Plans figure
+}
+
+# catches: plans of different names kept apart, so that two projects that ran different plans never stand side by
+# side (Q-O17).
+test_two_projects_with_different_plan_names_stand_side_by_side() {
+  rolled_up_project alpha one-setup
+  rolled_up_project_with_plans beta templates-in-other-order "$AFTER_THE_FIRST_RUN" REQ-950 "$PLAN_TEXT"
+  compared alpha/project beta/project
+  assert_prints '| figure | setup 1, REQ-900 | setup 2, REQ-950 |' figure_row Plans figure
+  assert_prints '| runs | 7 | 6 |' figure_row Plans runs
+  assert_prints '| runs | 5 | 4 |' figure_row 'Item REQ-900-1A-first-example' runs
+}
+
+# catches: the release plans of one project shown apart, or in the order of their names as text (v0.10 before
+# v0.9), so that a project's releases never stand side by side in order.
+test_the_release_plans_of_one_project_stand_side_by_side_in_release_order() {
+  rolled_up_project_with_plans zeta one-setup '' v0.10 "$V010_TEXT" v0.9 "$V09_TEXT"
+  compared zeta/project
+  assert_prints '| figure | setup 1, v0.9 | setup 1, v0.10 |' figure_row Plans figure
+  assert_prints '| items | 2 | 1 |' figure_row Plans items
+  assert_prints '| release candidates | 0 | 0 |' figure_row Plans 'release candidates'
+}
+
+# catches: an item that only one column has dropped, shown twice, or given another column's figures, instead of
+# listed once with `none` in the other columns.
+test_items_that_no_other_column_has_are_each_listed_once() {
+  rolled_up_project_with_plans zeta one-setup '' v0.9 "$V09_TEXT" v0.10 "$V010_TEXT"
+  compared zeta/project
+  assert_prints '| runs | 5 | none |' figure_row 'Item REQ-900-1A-first-example' runs
+  assert_prints '| runs | 1 | none |' figure_row 'Item REQ-900-1B-second-example' runs
+  assert_prints '| runs | none | 1 |' figure_row 'Item REQ-900-T1-final-test' runs
+  assert_prints 3 grep --count '^### Item ' stdout
 }
 
 run_tests

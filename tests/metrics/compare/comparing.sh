@@ -19,14 +19,25 @@ readonly COMPARISON_OUTPUT=(stdout stderr status files-before checkout-before)
 readonly TEMPORARY_FOLDER=temporary
 
 # Builds <folder>/project from a history, with its metrics started at the time (default: before the plan), the plan
-# and the runs of reviewed-items (rolling.sh), and collects it: the collector writes its roll-up REQ-900.md.
+# REQ-900 and the runs of reviewed-items (rolling.sh), and collects it: the collector writes its roll-up REQ-900.md.
 rolled_up_project() {
-  local folder=$1 history=$2 start=${3:-}
+  rolled_up_project_with_plans "$1" "$2" "${3:-}" REQ-900 "$PLAN_TEXT"
+}
+
+# Builds <folder>/project as rolled_up_project does, with the plans given (a name and a text each) instead of REQ-900:
+# the collector writes a roll-up for each plan whose items ran.
+#   rolled_up_project_with_plans zeta one-setup "" v0.9 "$V09_TEXT" v0.10 "$V010_TEXT"
+rolled_up_project_with_plans() {
+  local folder=$1 history=$2 start=$3
+  shift 3
   mkdir "$folder"
   (
     cd "$folder"
     started_project "$history" "$start"
-    commit_plan REQ-900 "$PLAN_TEXT"
+    while (($# > 0)); do
+      commit_plan "$1" "$2"
+      shift 2
+    done
     transcripts reviewed-items
     collected
   )

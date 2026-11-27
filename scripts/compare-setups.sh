@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Compares template setups: reads the roll-ups the collector wrote into each project's ctxm/metrics/ and shows the
-# setups side by side, by plan and by item. Reads nothing else and writes nothing.
+# setups side by side, a column for each setup and plan, and the items by task name. Reads nothing else and writes
+# nothing.
 # Usage and exit codes: compare/help.txt (what --help prints); the rules: docs/compare-setups.md.
 # The layers: this file wires; compare/projects.sh reads (the port); compare/*.jq decide (the rules), joined with the
 # collector's roll-up format by compare/program.sh.

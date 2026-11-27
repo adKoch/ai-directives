@@ -1,8 +1,9 @@
 usage: compare-setups.sh [--help] [--] <project folder>...
-Shows the setups of the projects given side by side, read from the roll-ups in each project's ctxm/metrics/: for
-each plan its cost, the items at the round limit, the escaped defects and the owner's questions; for each of its
-items its cost and its rounds. A setup is a project with its templates and roles (the fingerprint). It reads only
-ctxm/metrics/*.md and writes nothing.
+Shows the setups of the projects given side by side, read from the roll-ups in each project's ctxm/metrics/: a
+column for each setup and plan, whatever the plans are named; for each plan its cost, the items at the round limit,
+the escaped defects and the owner's questions; for each item, matched by task name, its cost and its rounds. A
+setup is a project with its templates and roles (the fingerprint). It reads only ctxm/metrics/*.md and writes
+nothing.
   <project folder>  the folder of a project whose metrics the collector wrote; 1 to 8 of them
   --help            print this text
   --                every argument after it is a project folder
