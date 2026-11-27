@@ -13,6 +13,10 @@ T-1 release-tester       requirements <ids> (+ cases from 1B)
 
 The last step of every plan is `final test`, then the RC.
 
+## Item headings
+Write each item's heading as ``**<id> <role>: <title>** (task `<task name>`)``: the roll-ups read an item's task name
+only there, so a task named elsewhere (a dependency, a done list) is no item.
+
 ## Groups
 With releases, a group is done when its milestone test passes. No other verification is planned between items.
 

@@ -57,8 +57,8 @@ Every finding, an unexplained failure, a defect, an exception, work outside the 
   (`cleanupPeriodDays`, 30 days by default), and the numbers come from them.
 - The collector writes only `ctxm/metrics/`: numbers, task names, roles, models and dates, never prompt, file or
   report text. Agents add only the `Findings:` line to a report; everything else is derived.
-- The collector needs `bash` and `jq` from the project's own toolchain. A project without them adds them; with the
-  nix template that is a new flake tool, the owner's decision.
+- The collector needs `bash` 4.4 or later, `jq`, `git`, and `ln`, `mkdir`, `mv`, `rm`, `wc` from the project's own
+  toolchain. A project without them adds them; with the nix template that is a new flake tool, the owner's decision.
 
 ## Resume point
 Keep `ctxm/main/progress.md` current: items in flight with their round counts and branches, what waits on the owner,
@@ -74,6 +74,8 @@ compacted; read it first when a session starts.
 ## Task workspaces
 - Every task has a unique name: a plan item's is `<REQ>-<item>-<slug>`, the planner's run is `<REQ>-plan`. Give each
   agent its task name.
+- Open every dispatch with ``Task: `<task name>` `` on its first line. The collector reads the task from that form
+  and writes no run without it.
 - A task's workspace is `ctxm/tmp/<task-name>/` in this checkout, ignored by git, shared by every agent on that
   task and by no other.
 - Delete a group's task folders when the group is done.
