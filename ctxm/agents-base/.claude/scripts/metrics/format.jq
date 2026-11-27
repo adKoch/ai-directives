@@ -6,7 +6,7 @@
 def columns: [
   "task", "role", "session", "agent", "start", "end", "wall_seconds",
   "input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens", "compactions",
-  "model", "effort", "project", "templates", "roles"
+  "model", "effort", "project", "templates", "roles", "blocking", "nits"
 ];
 
 def header: columns | join(",");
@@ -41,6 +41,9 @@ def is_agent_id: matches("[0-9a-z]{1,64}") and (is_fixed_word | not);
 def is_project_name: matches("[A-Za-z0-9][A-Za-z0-9._-]{0,63}") and (is_fixed_word | not);
 def is_template_name: matches("[a-z0-9][a-z0-9-]{0,63}");
 def is_library_commit: matches("[0-9a-f]{40}([0-9a-f]{24})?");
+# A plan is a file of ctxm/plans/, its roll-up ctxm/metrics/<plan>.md: letters and digits in parts joined by one `.`,
+# `_` or `-`, so the name holds no `..`, no `/` and no leading dot.
+def is_plan_name: matches("[A-Za-z0-9]+([._-][A-Za-z0-9]+){0,15}") and length <= 64;
 
 # A time in ctxm/metrics/: UTC, to the second.
 def is_time:
@@ -73,24 +76,50 @@ def by_column: [columns, .] | transpose | map({key: .[0], value: .[1]}) | from_e
 
 def is_line: (.start | is_time) and (.end | is_time);
 
-def line_of_fields:
-  split(",") as $fields
-  | if ($fields | length) == (columns | length) and all($fields[]; is_field) and ($fields | by_column | is_line)
+# The columns of the first format: no header with fewer is one of this format.
+def first_format_width: 17;
+
+# How many columns a header names, when it is the header of this format or of an earlier one (columns are only ever
+# added at the end); null for any other header.
+def header_width:
+  . as $row
+  | first(range(first_format_width; (columns | length) + 1) | select(columns[:.] | join(",") == $row)) // null;
+
+# What a row of an earlier header lacks: the columns added since, each unknown (they had no source then).
+def missing_fields($width): [range($width; columns | length) | unknown];
+
+def widened($width): . + (missing_fields($width) | map("," + .) | add // "");
+
+def line_of_fields($width):
+  split(",") as $given
+  | ($given + missing_fields($width)) as $fields
+  | if ($given | length) == $width and all($fields[]; is_field) and ($fields | by_column | is_line)
     then $fields | by_column
     else refuse("ctxm/metrics/tasks.csv holds a line that is no line of the format; restore it from git")
     end;
 
+def written_rows: sub("\n\\z"; "") | split("\n");
+
 # The lines tasks.csv holds (the input is its text, empty when there is no file), each as an object by column. A
-# file with another header or a broken line is refused: the collector adds only to a file it can read.
+# file with another header or a broken line is refused: the collector adds only to a file it can read. A file under
+# an earlier header is read with unknown in the columns added since.
 def written_lines:
   if . == "" then []
-  else sub("\n\\z"; "") | split("\n") as $rows
-    | if $rows[0] != header
+  else written_rows as $rows
+    | ($rows[0] | header_width) as $width
+    | if $width == null
       then refuse("ctxm/metrics/tasks.csv does not start with the header of the format; restore it from git")
-      else $rows[1:] | map(line_of_fields)
+      else $rows[1:] | map(line_of_fields($width))
       end
+  end;
+
+# The text of tasks.csv (the input) under the header of the format: unchanged when it is there already, else
+# each row widened, so that an old file is moved to the new header with every line kept.
+def under_current_header:
+  if . == "" then header
+  else written_rows | (.[0] | header_width) as $width | [header] + (.[1:] | map(widened($width))) | join("\n")
   end;
 
 # tasks.csv with the lines added: what was there, byte for byte, then the new lines; the header first in a new file.
 def with_lines_added($lines):
-  (if . == "" then header else sub("\n\\z"; "") end) + "\n" + ($lines | map(csv_line + "\n") | add);
+  under_current_header + "\n" + ($lines | map(csv_line + "\n") | add);

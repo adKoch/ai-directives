@@ -1,0 +1,137 @@
+{
+  "about": "One session and five finished runs of one item whose reports end with a line that is no Findings line of the format: text after the counts, a third field, a formula, a count too long, and the line in the middle of the report. Each run makes one call.",
+  "sessions": [
+    {
+      "id": "aaaaaaaa-0000-4000-8000-000000000001",
+      "model": "claude-synthetic-large",
+      "events": [
+        {
+          "minute": 0,
+          "prompt": "synthetic-text the owner asks"
+        }
+      ],
+      "runs": [
+        {
+          "agent": "a0000000000000001",
+          "role": "inspector",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text run",
+          "finished": 10,
+          "events": [
+            {
+              "minute": 1,
+              "prompt": "Task: `REQ-900-1A-first-example` synthetic-text the item"
+            },
+            {
+              "minute": 2,
+              "call": "msg_a0000000000000001",
+              "usage": {
+                "input_tokens": 1,
+                "output_tokens": 10,
+                "cache_creation_input_tokens": 100,
+                "cache_read_input_tokens": 1000
+              },
+              "report_end": "Findings: 1 blocking, 2 nits synthetic-text secret"
+            }
+          ]
+        },
+        {
+          "agent": "a0000000000000002",
+          "role": "inspector",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text run",
+          "finished": 10,
+          "events": [
+            {
+              "minute": 1,
+              "prompt": "Task: `REQ-900-1A-first-example` synthetic-text the item"
+            },
+            {
+              "minute": 2,
+              "call": "msg_a0000000000000002",
+              "usage": {
+                "input_tokens": 1,
+                "output_tokens": 10,
+                "cache_creation_input_tokens": 100,
+                "cache_read_input_tokens": 1000
+              },
+              "report_end": "Findings: 1 blocking, 2 nits, 3 notes"
+            }
+          ]
+        },
+        {
+          "agent": "a0000000000000003",
+          "role": "inspector",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text run",
+          "finished": 10,
+          "events": [
+            {
+              "minute": 1,
+              "prompt": "Task: `REQ-900-1A-first-example` synthetic-text the item"
+            },
+            {
+              "minute": 2,
+              "call": "msg_a0000000000000003",
+              "usage": {
+                "input_tokens": 1,
+                "output_tokens": 10,
+                "cache_creation_input_tokens": 100,
+                "cache_read_input_tokens": 1000
+              },
+              "report_end": "Findings: =1+1 blocking, 2 nits"
+            }
+          ]
+        },
+        {
+          "agent": "a0000000000000004",
+          "role": "inspector",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text run",
+          "finished": 10,
+          "events": [
+            {
+              "minute": 1,
+              "prompt": "Task: `REQ-900-1A-first-example` synthetic-text the item"
+            },
+            {
+              "minute": 2,
+              "call": "msg_a0000000000000004",
+              "usage": {
+                "input_tokens": 1,
+                "output_tokens": 10,
+                "cache_creation_input_tokens": 100,
+                "cache_read_input_tokens": 1000
+              },
+              "report_end": "Findings: 12345678901 blocking, 2 nits"
+            }
+          ]
+        },
+        {
+          "agent": "a0000000000000005",
+          "role": "inspector",
+          "model": "claude-synthetic-small",
+          "description": "synthetic-text run",
+          "finished": 10,
+          "events": [
+            {
+              "minute": 1,
+              "prompt": "Task: `REQ-900-1A-first-example` synthetic-text the item"
+            },
+            {
+              "minute": 2,
+              "call": "msg_a0000000000000005",
+              "usage": {
+                "input_tokens": 1,
+                "output_tokens": 10,
+                "cache_creation_input_tokens": 100,
+                "cache_read_input_tokens": 1000
+              },
+              "report_end": "Findings: 1 blocking, 2 nits\nsynthetic-text a line after it"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

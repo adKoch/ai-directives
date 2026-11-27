@@ -31,11 +31,15 @@ def applied_template:
   else error("\(lock_file) names a template or a library commit that is none")
   end;
 
+# The order the lock lists the templates in is the order they were applied in, and a later template wins over an
+# earlier one: so the order is part of the fingerprint, and the same templates in another order are another setup.
+def applied_order: if length == 0 then nothing else join("+") end;
+
 def applied_templates:
   read_lock
   | if .version != lock_version
     then error("\(lock_file) is not in the lock format ctxm 0.7 writes (version \(lock_version))")
-    else .templates | map(applied_template) | listed
+    else .templates | map(applied_template) | applied_order
     end;
 
 # The lines between the first two `---` of an agent file.

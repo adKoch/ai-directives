@@ -2,7 +2,8 @@
 # closed main session. The rules are in docs/metrics-format.md of the template library ("What becomes a line").
 # The input of `plan` lists the facts: the project's setups (setup.jq, newest first) and one entry per transcript
 # (facts.jq) with its `kind` ("run" with its `agent`, `finished` and `role`, or "session").
-# Pure; needs format.jq, events.jq and report.jq. Read from the bottom (plan) up.
+# Pure; needs format.jq, events.jq, report.jq, holdings.jq, rollup.jq and rollup_text.jq. Read from the bottom
+# (plan) up.
 
 # The setup in force at a time, from the setups, newest first.
 def setup_at($time): first(.[] | select(.since <= $time)) // {absent: true};
@@ -33,9 +34,14 @@ def under($setup; line):
   else {line: line}
   end;
 
+# The two counts of a run's Findings line; a run without one (or with a malformed one) has the fixed word.
+def findings_columns($findings):
+  if ($findings | type) == "object" then $findings else {blocking: nothing, nits: nothing} end;
+
 def run_line($run; $events; $setup):
   {task: $run.task, role: $run.role, session: $run.session, agent: $run.agent}
   + {effort: ($setup.fingerprint.efforts[$run.role] // unknown)}
+  + findings_columns($run.findings)
   + spanning($run.first; $run.last)
   + ($events | counted)
   + fingerprint_of($setup);
@@ -48,7 +54,7 @@ def run_outcome($run):
     elif $run.task == null then {skipped: "unnamed"}
     elif $run.role == null or ($events | has_unplain_model) then {skipped: "unplain"}
     elif $run.last <= .start then {skipped: "before_start"}
-    else under($setup; run_line($run; $events; $setup))
+    else under($setup; run_line($run; $events; $setup)) + {malformed: ($run.findings == "malformed")}
     end;
 
 # Of the copies of a run in several session folders, the one that went furthest tells its state.
@@ -63,6 +69,7 @@ def run_outcomes:
 
 def session_line($session; $events; $setup):
   {task: nothing, role: main_role, session: $session, agent: nothing, effort: unknown}
+  + findings_columns(null)
   + spanning($events | map(.time) | min; $events | map(.time) | max)
   + ($events | counted)
   + fingerprint_of($setup);
@@ -113,62 +120,63 @@ def all_session_outcomes:
 # The outcomes, unless one of them refuses the collection.
 def unless_refused: (map(.refused // empty) | first) as $why | if $why == null then . else refuse($why) end;
 
-def skipped_counts: reduce (.[] | .skipped // empty) as $reason ({}; .[$reason] += 1);
+# Why an outcome is counted on stderr: the run or part was not written, or the run was written without its
+# Findings line because that line is none of the format.
+def reasons: (.skipped // empty), (select(.malformed and .line != null) | "malformed_findings");
 
-# The last time each session named by a session's own transcript wrote a record.
-def last_records:
-  reduce (.[] | select(.kind == "session") | .sessions | to_entries[]) as $seen ({};
-    .[$seen.key] = ([.[$seen.key], $seen.value] | max));
+def skipped_counts: reduce (.[] | reasons) as $reason ({}; .[$reason] += 1);
 
-# The spans of time the lines of each main session cover, in seconds.
-def counted_spans:
-  reduce (.[] | select(.role == main_role)) as $line ({};
-    .[$line.session] += [{from: ($line.start | time_seconds), to: ($line.end | time_seconds)}]);
+def is_transcript: .kind == "run" or .kind == "session";
 
-# The end of the last line each main session has.
-def counted_until:
-  reduce (.[] | select(.role == main_role)) as $line ({};
-    .[$line.session] = ([.[$line.session], ($line.end | time_seconds)] | max));
-
-def written_agents: map(select(.role != main_role) | {key: .agent, value: true}) | from_entries;
-
-# The start record: one past time. Anything else there is refused, never repaired from the transcripts.
-def start_seconds($now):
-  if is_time and time_seconds <= $now then time_seconds
-  else refuse("ctxm/metrics/start does not hold one past time such as 2026-01-05T09:00:00Z; restore it from git")
-  end;
+def facts_of($kind): map(select(.kind == $kind));
 
 # What the lines are decided from: the readable transcripts, their events, and what tasks.csv and the start say.
+# The plans, commits and release candidates are for the roll-ups only.
 def collection($facts; $settings):
   ($settings.written | written_lines) as $written
-  | ($facts | map(select(.kind != "setup" and .unreadable == 0))) as $transcripts
+  | ($facts | map(select(is_transcript and .unreadable == 0))) as $transcripts
   | {
       project: $settings.project,
       now: $settings.now,
       start: ($settings.start | start_seconds($settings.now)),
-      setups: ($facts | map(select(.kind == "setup"))),
+      setups: ($facts | facts_of("setup")),
       transcripts: $transcripts,
       last: ($transcripts | last_records),
       counted_spans: ($written | counted_spans),
       counted_until: ($written | counted_until),
-      written_agents: ($written | written_agents)
+      written_agents: ($written | written_agents),
+      plans: ($facts | facts_of("plan") | map(select(.name != null))),
+      commits: ($facts | facts_of("commits")),
+      candidates: ($facts | facts_of("candidate"))
     }
   | with_owned_events($transcripts);
+
+# The roll-ups of the plans, from the lines tasks.csv holds afterwards (the input is the collection): one per plan
+# that has lines, each with the plan's name and its text.
+def rollups_after($content):
+  {lines: ($content | written_lines), plans, commits, candidates, start, project}
+  | rollups | map({plan, content: rollup_text});
+
+def unreadable_counts($facts): {
+  unreadable: ($facts | map(select(is_transcript and .unreadable > 0)) | length),
+  left_out_plans: ($facts | map(select(.kind == "plan" and .name == null)) | length)
+};
 
 def planned($facts; $settings):
   collection($facts; $settings)
   | (run_outcomes + all_session_outcomes | unless_refused) as $outcomes
   | ($outcomes | map(.line // empty) | sort_by([.end, .start, .session, .agent])) as $lines
-  | ($facts | map(select(.kind != "setup" and .unreadable > 0)) | length) as $unreadable
+  | ($settings.written | with_lines_added($lines)) as $content
   | {
       added: ($lines | length),
-      content: ($settings.written | with_lines_added($lines)),
+      content: $content,
       result: ($lines | result),
-      notes: ($outcomes | skipped_counts + {unreadable: $unreadable} | notes)
+      rollups: rollups_after($content),
+      notes: ($outcomes | skipped_counts + unreadable_counts($facts) | notes)
     };
 
 # The plan of a collection, from the facts (the inputs) and the settings {project, now, start, written}: what
-# tasks.csv holds afterwards, the result and the notes; or the refusal, when nothing may be written.
+# tasks.csv holds afterwards, the result, the roll-ups and the notes; or the refusal, when nothing may be written.
 def plan($settings):
   [inputs] as $facts
   | try planned($facts; $settings)

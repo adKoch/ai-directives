@@ -47,4 +47,22 @@ test_a_lines_file_it_cannot_read_is_refused_and_left_byte_for_byte() {
   done
 }
 
+# catches: a lines file under an earlier header refused or left under it, or moved to the new header with a line
+# dropped or changed, or without `unknown` in the columns the header gained.
+test_a_lines_file_under_an_earlier_header_moves_to_the_new_header_keeping_its_lines() {
+  local header
+  started_project one-setup
+  transcripts finished-run
+  collected
+  cut -d, -f1-17 "$METRICS/tasks.csv" | grep -v ',main,' >old.csv
+  cp old.csv "$METRICS/tasks.csv"
+  collected
+  header="$(names_under Columns)"
+  assert_prints "$header" head -n 1 "$METRICS/tasks.csv"
+  assert_prints 'unknown,unknown' line_fields a0000000000000001 blocking nits
+  assert_prints 'none,none' line_fields aaaaaaaa-0000-4000-8000-000000000001 blocking nits
+  assert_prints 'REQ-900-1A-first-example,inspector,60,600' \
+    line_fields a0000000000000001 task role input_tokens output_tokens
+}
+
 run_tests

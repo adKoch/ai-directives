@@ -35,7 +35,7 @@ makers by hand, with a folder in the task's workspace.
 | `sessions[].renames_copies` | optional, `true`: the copy of the other session's own records names this session (`sessionId`), as Claude Code writes some copies; the copied runs are unchanged |
 | `sessions[].events[]`, `runs[].events[]` | in time order, each with its `minute` and one of the kinds below; at most 999999 per session or run |
 | `{"prompt": <text>}` | one user record. A run's first prompt carries the task name |
-| `{"call": <message id>, "usage": {…}, "records": <n>, "earlier_records_output_tokens": <n>}` | one API call, written as `records` assistant records (default 1, at most 100) under one message id. Each holds `usage`; with the last key, the records before the last hold that number as their output |
+| `{"call": <message id>, "usage": {…}, "records": <n>, "earlier_records_output_tokens": <n>}` | one API call, written as `records` assistant records (default 1, at most 100) under one message id. Each holds `usage`; with the last key, the records before the last hold that number as their output. With `"report_end": <text>`, every record's text ends with that line, as a run's report ends with its Findings line |
 | `{"compaction": {"trigger": …, "preTokens": …}}` | one `compact_boundary` record |
 | `sessions[].runs[]`: `agent`, `role`, `model`, `description`, `finished` | a subagent run: `subagents/agent-<agent>.jsonl` and `.meta.json`. `finished` is the minute the run finishes; without it the run never does |
 
@@ -54,7 +54,7 @@ a commit stands at its minute of the session (`session-across-template-update.js
   the event's row to the table above and its key names to the table below. Worked example: `compaction` (the
   definition `compaction_record`, its branch, its row above, the shape `compacted-session.json`).
 - **A new file or a new relation between sessions**: in `layout.jq`; `copies` (`with_copied`) is the example.
-- Save a test in `transcripts.test.sh` only for a property that a collector test would pass without, as the four
+- Save a test in `transcripts.test.sh` only for a property that a collector test would pass without, as the five
   there.
 
 ## What must not change

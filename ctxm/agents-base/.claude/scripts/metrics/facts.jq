@@ -6,6 +6,8 @@
 #   sessions    the last time each session named by its records wrote one
 #   events      its API calls and compactions, each once, by id
 #   task        the task name of its first prompt, or null
+#   findings    the counts of the `Findings:` line its last text ends with, "malformed" when that line is none of
+#               the format, or null
 # No text leaves this file: a value is a number, an id or a name that format.jq accepts, or null.
 # Pure; needs format.jq. Read from the bottom (transcript_facts) up.
 
@@ -72,6 +74,33 @@ def add_compaction($record; $time):
   else .unreadable += 1
   end;
 
+# The text a message ends with: its last text block (a string is one block). Anything else gives null.
+def final_text:
+  if type == "string" then .
+  elif type == "array" then [.[] | select(field("type") == "text") | field("text") | strings] | last
+  else null
+  end;
+
+def last_line: sub("\\s+\\z"; "") | split("\n") | last;
+
+# What the last line of a report says, when it opens as the Findings line: its two counts, or "malformed" when
+# anything else stands there (text, a third field). Only the two counts are ever kept; a line that opens
+# otherwise says nothing (null).
+def findings_of:
+  last_line
+  | if startswith("Findings:") | not then null
+    else ([capture("\\AFindings: (?<blocking>[0-9]{1,9}) blocking, (?<nits>[0-9]{1,9}) nits\\z")] | first
+      | if . == null then "malformed" else map_values(tonumber) end)
+    end;
+
+# Of the text an assistant record carries, only the Findings line of the last one is looked at.
+def add_report($record; $time):
+  ($record.message | field("content") | final_text) as $text
+  | if ($text | type) == "string" and (.report == null or $time >= .report.time)
+    then .report = {time: $time, findings: ($text | findings_of)}
+    else .
+    end;
+
 # Only a transcript's first prompt is looked at.
 def add_prompt($record):
   if .prompted then . else .prompted = true | .task = ($record.message | field("content") | named_task) end;
@@ -83,7 +112,7 @@ def is_prompt: .type == "user";
 def counts: is_call or is_compaction or is_prompt;
 
 def add_counted($record; $time):
-  if ($record | is_call) then add_call($record; $time)
+  if ($record | is_call) then add_call($record; $time) | add_report($record; $time)
   elif ($record | is_compaction) then add_compaction($record; $time)
   elif ($record | is_prompt) then add_prompt($record)
   else .
@@ -113,12 +142,15 @@ def record_of:
   else (try fromjson catch null) | if type == "object" then . else null end
   end;
 
-def no_facts: {unreadable: 0, first: null, last: null, sessions: {}, events: {}, prompted: false, task: null};
+def no_facts: {
+  unreadable: 0, first: null, last: null, sessions: {}, events: {}, prompted: false, task: null, report: null
+};
 
 # The facts of the transcript whose lines are the inputs.
 def transcript_facts:
   reduce (inputs | record_of) as $record (no_facts; add_record($record))
-  | del(.prompted)
+  | .findings = .report.findings
+  | del(.prompted, .report)
   | .events |= [to_entries[] | .value + {id: .key}];
 
 # Adds what a run's `.meta.json` says ($text is empty when the run has none): whether the run has finished, and its
