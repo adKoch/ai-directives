@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
 # Collects a project's metrics: reads Claude Code's transcripts of the project and adds to ctxm/metrics/tasks.csv
 # one line per finished agent run and per closed main session, each with its token sums and the setup that did
-# the work, and rewrites the roll-up (ctxm/metrics/<plan>.md) of each plan of ctxm/plans/ that has lines. The first
-# collection only records where the project's metrics start (ctxm/metrics/start); what ended before it is never
-# collected. Main runs it after each merge.
+# the work, adds to ctxm/metrics/counted.csv the ids of the API calls and compactions those lines count, so that
+# none is counted twice or lost however the transcripts are copied or deleted, and rewrites the roll-up
+# (ctxm/metrics/<plan>.md) of each plan of ctxm/plans/ that has lines. The first collection only records where the
+# project's metrics start (ctxm/metrics/start); what ended before it is never collected. Main runs it after each
+# merge.
 # Usage: collect-metrics.sh [--dry-run] [--project <folder>] [--transcripts <folder>]
 #   --dry-run               print what a collection would add (counts only) and write nothing
 #   --project <folder>      the project's main checkout (default: the current folder)
 #   --transcripts <folder>  where Claude Code keeps the project's sessions (default: its folder for the project
 #                           under ~/.claude/projects/)
-# It writes only ctxm/metrics/, numbers and checked names only: no prompt, file, plan or report text. A second
-# collection adds nothing and rewrites the same roll-ups; an interrupted one writes nothing.
+# It writes only ctxm/metrics/, numbers, checked ids and checked names only: no prompt, file, plan or report text.
+# A second collection adds nothing and rewrites the same roll-ups; an interrupted one writes nothing.
 # Prints the result on stdout (how many lines, how many roll-ups), and on stderr a count for each reason a run or a
 # session was not written. Exits 0 when the collection is done (a closed stdout loses only the result), 1 when it
 # is refused, interrupted before its last rename or a step fails (one `error:` line; nothing written, unless a
@@ -39,7 +41,7 @@ source "$METRICS_SCRIPTS/store.sh"
 source "$METRICS_SCRIPTS/telling.sh"
 
 # The rules of a collection, each after the ones it needs (program.sh).
-readonly PLAN_MODULES="format events report holdings rollup rollup_text lines"
+readonly PLAN_MODULES="format counted events report holdings rollup rollup_text lines"
 readonly USAGE='usage: collect-metrics.sh [--dry-run] [--project <folder>] [--transcripts <folder>]'
 DRY_RUN=no
 PROJECT_FOLDER=.
@@ -133,10 +135,10 @@ collect() {
   fi
 }
 
-# Writes the added lines and the roll-ups together, all or nothing (store.sh): every place is checked and every file
-# prepared before the first is renamed, and a stop before the last rename puts the old files back. tasks.csv is
-# renamed last: a kill that cuts the renames off (no trap runs) leaves it old, so its missing lines are found again
-# and the next collection rewrites every roll-up from them.
+# Writes the added lines, their record and the roll-ups together, all or nothing (store.sh): every place is checked
+# and every file prepared before the first is renamed, and a stop before the last rename puts the old files back.
+# tasks.csv is renamed last, just after its record: a kill that cuts the renames off (no trap runs) leaves it old,
+# and its record new: the old files the kill left stop every collection until a person moves them back (store.sh).
 store_collection() {
   local plan=$1 count index name
   count="$(plan_part '.rollups | length' "$plan")"
@@ -148,18 +150,24 @@ store_collection() {
     name="$(plan_part ".rollups[$index].plan" "$plan")"
     prepare_file "$METRICS_FOLDER/$name.md" "$(plan_part ".rollups[$index].content" "$plan")"
   done
-  [[ "$(plan_part .added "$plan")" == 0 ]] || prepare_file "$TASKS_FILE" "$(plan_part .content "$plan")"
+  if [[ "$(plan_part '.counted != null' "$plan")" == true ]]; then
+    prepare_file "$COUNTED_FILE" "$(plan_part .counted "$plan")"
+    prepare_file "$TASKS_FILE" "$(plan_part .content "$plan")"
+  fi
   publish_prepared
 }
 
-# Prints the plan of the collection (lines.jq), from the facts of the project and of its transcripts.
+# Prints the plan of the collection (lines.jq), from the facts of the project and of its transcripts, and what
+# tasks.csv and its record hold (empty when a file is not there).
 collection_plan() {
-  local written=(--arg written '')
+  local written=(--arg written '') counted=(--arg counted '')
   ! has_stored "$TASKS_FILE" || written=(--rawfile written "$PROJECT/$TASKS_FILE")
-  # shellcheck disable=SC2016 # $project, $start and $written are jq's
+  ! has_stored "$COUNTED_FILE" || counted=(--rawfile counted "$PROJECT/$COUNTED_FILE")
+  # shellcheck disable=SC2016 # $project, $start, $written and $counted are jq's
   collection_facts "$TRANSCRIPTS_FOLDER" | metrics_jq "$PLAN_MODULES" '
-    plan({project: $project, now: (now | floor), start: $start, written: $written})
-  ' --null-input --compact-output --arg project "$PROJECT_NAME" --arg start "$(stored_start)" "${written[@]}"
+    plan({project: $project, now: (now | floor), start: $start, written: $written, counted: $counted})
+  ' --null-input --compact-output --arg project "$PROJECT_NAME" --arg start "$(stored_start)" "${written[@]}" \
+    "${counted[@]}"
 }
 
 # Prints every fact the plan is made from, one JSON object per line: the setups, the sessions, the runs, and what

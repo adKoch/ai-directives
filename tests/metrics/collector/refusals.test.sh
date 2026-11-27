@@ -103,8 +103,9 @@ test_an_interrupted_collection_leaves_the_lines_as_they_were() {
   PATH="$PWD/tools:$PATH" collect
   assert_prints 1 cat status
   assert_same_content "$METRICS/tasks.csv" before.csv
-  assert_prints 'start
-tasks.csv' ls "$METRICS"
+  assert_prints 'counted.csv
+start
+tasks.csv' metrics_files
 }
 
 # catches: a step that fails with status 1 (a full disk, a read-only folder) ending the collector without its

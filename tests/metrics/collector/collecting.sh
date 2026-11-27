@@ -58,6 +58,22 @@ transcripts() {
     "${TRANSCRIPTS_EPOCH:-$EPOCH}" "$@"
 }
 
+# Builds ./transcripts as transcripts does, with the session ids in the order the word says: `given`, as the shape
+# has them, or `reversed` (../support/shapes.jq), so the session whose id sorted first sorts last. A test that loops
+# over both shows that no line depends on how the ids sort. The reversed shape is ./reversed.json.
+transcripts_in_id_order() {
+  local order=$1 shape=$2
+  shift 2
+  case "$order" in
+    given) transcripts "$shape" "$@" ;;
+    reversed)
+      jq -L "$SUPPORT" 'include "shapes"; with_session_ids_reversed' "$(scenario_file shape "$shape")" >reversed.json
+      "$SUPPORT/make-transcripts.sh" "$PWD/reversed.json" "$PWD/transcripts" "${TRANSCRIPTS_EPOCH:-$EPOCH}" "$@"
+      ;;
+    *) fail "no id order $order: given or reversed" ;;
+  esac
+}
+
 # Runs the collector with the arguments, the PATH and an empty home, plus the variables the caller names (NAME=value).
 in_collector_environment() {
   mkdir -p home
@@ -128,6 +144,12 @@ assert_no_text_got_out() (
     [[ "$(<"$file")" != *"$TEXT_MARK"* ]] || fail "text of a transcript stands in $file"
   done
 )
+
+# Prints the names of the files in ctxm/metrics/, in the order of their bytes: the locale of the test's shell would
+# sort `counted.csv` and `REQ-900.md` either way round.
+metrics_files() {
+  LC_ALL=C ls "$METRICS"
+}
 
 # Prints the project's files that git does not know: all the collector may have written.
 written_files() {

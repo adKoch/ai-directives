@@ -5,11 +5,11 @@
 # shellcheck source=collecting.sh
 source "$(dirname "${BASH_SOURCE[0]}")/collecting.sh"
 
-# Prints every field of the lines that is not made of the characters a field may hold, as JSON.
+# Prints every field of the lines and of their record that is not made of the characters a field may hold, as JSON.
 fields_outside_the_grammar() {
   jq --raw-input --null-input --compact-output '
     [inputs | split(",")[] | select(test("\\A[A-Za-z0-9][A-Za-z0-9._:@=/+\\[\\]-]*\\z") | not)]
-  ' "$METRICS/tasks.csv"
+  ' "$METRICS/tasks.csv" "$METRICS/counted.csv"
 }
 
 # catches: a prompt, a reply, a description, a title or a compaction notice copied into ctxm/metrics/ or printed.
@@ -38,8 +38,23 @@ test_a_payload_where_the_task_name_stands_keeps_the_run_out() {
   assert_prints 'note: finished runs whose first prompt names no task after Task:, not written: 8' \
     cat stderr
   assert_no_text_got_out
-  assert_prints '?? ctxm/metrics/start
+  assert_prints '?? ctxm/metrics/counted.csv
+?? ctxm/metrics/start
 ?? ctxm/metrics/tasks.csv' written_files
+}
+
+# catches: a message id from a transcript written to the record as it stands: a separator, a quote or a line break
+# would break its rows, a leading `=`, `-` or `_` start a spreadsheet formula or no field, and a control character
+# or an oversize id would be kept and committed.
+test_a_call_id_that_is_no_id_keeps_its_transcript_out_of_the_lines_and_the_record() {
+  started_project one-setup
+  transcripts payload-call-ids
+  collected
+  assert_prints 1 line_count
+  assert_prints 'line,kind,id
+1,call,msg_synthetic_plain_id' cat "$METRICS/counted.csv"
+  assert_prints 'note: transcripts that cannot be read whole, not written: 8' cat stderr
+  assert_no_text_got_out
 }
 
 # catches: a session's title or agent name read at all: the line names the session by its id.

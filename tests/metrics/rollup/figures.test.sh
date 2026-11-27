@@ -83,8 +83,9 @@ test_a_plans_items_are_only_the_tasks_of_its_item_headings() {
   transcripts reviewed-items
   collected
   assert_prints 'REQ-900.md
+counted.csv
 start
-tasks.csv' ls "$METRICS"
+tasks.csv' metrics_files
 }
 
 # catches: the Findings counts read from the text a run writes after its handback call instead of from the report

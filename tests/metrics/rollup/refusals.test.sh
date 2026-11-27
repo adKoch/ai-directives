@@ -35,8 +35,9 @@ test_a_plan_with_a_name_that_is_no_plain_name_is_left_out_and_counted() {
   done
   collected
   assert_prints 'REQ-900.md
+counted.csv
 start
-tasks.csv' ls "$METRICS"
+tasks.csv' metrics_files
   assert_prints "$LEFT_OUT_PLANS: 4" grep 'plan files' stderr
 }
 
@@ -48,8 +49,9 @@ test_a_plan_that_is_a_link_is_left_out_and_never_read() {
   ln -s "$PWD/outside.md" project/ctxm/plans/REQ-901.md
   collected
   assert_prints 'REQ-900.md
+counted.csv
 start
-tasks.csv' ls "$METRICS"
+tasks.csv' metrics_files
   assert_prints "$LEFT_OUT_PLANS: 1" grep 'plan files' stderr
 }
 
@@ -92,9 +94,10 @@ test_a_roll_up_that_belongs_to_no_plan_is_left_byte_for_byte() {
   collected
   assert_same_content "$METRICS/v0.1.md" before.md
   assert_prints 'REQ-900.md
+counted.csv
 start
 tasks.csv
-v0.1.md' ls "$METRICS"
+v0.1.md' metrics_files
 }
 
 # catches: a report's text, or a payload after the counts, copied into a line or the roll-up, or a Findings line
@@ -133,8 +136,9 @@ test_a_plan_over_the_size_limit_is_left_out_unread() {
   PATH="$PWD/tools:$PATH" collect
   assert_prints 0 cat status
   assert_prints 'REQ-900.md
+counted.csv
 start
-tasks.csv' ls "$METRICS"
+tasks.csv' metrics_files
   assert_prints "$LEFT_OUT_PLANS: 1" grep 'plan files' stderr
   assert_prints 1 grep --count --fixed-strings plans/REQ-900.md tools/jq-files
   assert_prints 0 awk '/REQ-902/ { read++ } END { print read + 0 }' tools/jq-files

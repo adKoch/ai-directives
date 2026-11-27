@@ -1,8 +1,9 @@
 # shellcheck shell=bash
 # The collector's only place to write: ctxm/metrics/ of the project.
-#   ctxm/metrics/start      where the project's metrics start (one time, written by the first collection)
-#   ctxm/metrics/tasks.csv  the lines
-#   ctxm/metrics/<plan>.md  the roll-ups
+#   ctxm/metrics/start        where the project's metrics start (one time, written by the first collection)
+#   ctxm/metrics/tasks.csv    the lines
+#   ctxm/metrics/counted.csv  the record of what the lines counted, by id (counted.jq); written with tasks.csv
+#   ctxm/metrics/<plan>.md    the roll-ups
 # A collection's files are written all or nothing: each is prepared beside its place, the old one kept under a
 # second name, then all are renamed into place; a collection stopped or failing before the last rename puts back
 # every file it had replaced (end_collector). Nothing here follows a symbolic link: a link on the way would let a
@@ -11,6 +12,7 @@
 
 readonly METRICS_FOLDER=ctxm/metrics
 readonly START_FILE=$METRICS_FOLDER/start TASKS_FILE=$METRICS_FOLDER/tasks.csv
+readonly COUNTED_FILE=$METRICS_FOLDER/counted.csv
 # The places a write is prepared for, in the order they are renamed into; empty when no write is under way.
 PREPARED_PLACES=()
 # The places whose rename has begun, so whose old file must be put back if the write stops before its end. A place
@@ -23,14 +25,14 @@ UNRESTORED_PLACES=()
 # reads and writes.
 refuse_unsafe_store() {
   local place
-  for place in ctxm "$METRICS_FOLDER" "$START_FILE" "$TASKS_FILE"; do
+  for place in ctxm "$METRICS_FOLDER" "$START_FILE" "$TASKS_FILE" "$COUNTED_FILE"; do
     [[ ! -L "$PROJECT/$place" ]] || refuse "$place is a symbolic link: the collector writes only the project's own" \
       "$METRICS_FOLDER/; remove the link; nothing was written"
   done
   for place in ctxm "$METRICS_FOLDER"; do
     [[ ! -e "$PROJECT/$place" || -d "$PROJECT/$place" ]] || refuse "$place is no folder; nothing was written"
   done
-  for place in "$START_FILE" "$TASKS_FILE"; do
+  for place in "$START_FILE" "$TASKS_FILE" "$COUNTED_FILE"; do
     [[ ! -e "$PROJECT/$place" || -f "$PROJECT/$place" ]] || refuse "$place is no plain file; nothing was written"
   done
 }

@@ -1,0 +1,33 @@
+{
+  "about": "Three sessions copied in a row, ids A < B < W. W makes one call (1 input token; the other kinds ten, a hundred and a thousand times that) and ends at minute 1. A resumes W at minute 10, its copy keeping W's id, and makes a call at minute 11 (2) and one at minute 100 (8). B forks A at minute 20, its copy of everything renamed to B, and makes one call (4). Collected at minute 100, when A is still open and B is closed, then again once A is closed. Counted once: 15 in all; W 1, A 8, and B 6, the call A made at minute 11 included, because B ended first.",
+  "sessions": [
+    {
+      "id": "12121212-0000-4000-8000-000000000003",
+      "model": "claude-synthetic-large",
+      "events": [
+        {"minute": 0, "prompt": "synthetic-text the owner starts the work"},
+        {"minute": 1, "call": "msg_synthetic_chain_w1", "usage": {"input_tokens": 1, "output_tokens": 10, "cache_creation_input_tokens": 100, "cache_read_input_tokens": 1000}}
+      ]
+    },
+    {
+      "id": "12121212-0000-4000-8000-000000000001",
+      "copies": "12121212-0000-4000-8000-000000000003",
+      "model": "claude-synthetic-large",
+      "events": [
+        {"minute": 10, "prompt": "synthetic-text the owner comes back"},
+        {"minute": 11, "call": "msg_synthetic_chain_a1", "usage": {"input_tokens": 2, "output_tokens": 20, "cache_creation_input_tokens": 200, "cache_read_input_tokens": 2000}},
+        {"minute": 100, "call": "msg_synthetic_chain_a2", "usage": {"input_tokens": 8, "output_tokens": 80, "cache_creation_input_tokens": 800, "cache_read_input_tokens": 8000}}
+      ]
+    },
+    {
+      "id": "12121212-0000-4000-8000-000000000002",
+      "copies": "12121212-0000-4000-8000-000000000001",
+      "renames_copies": true,
+      "model": "claude-synthetic-large",
+      "events": [
+        {"minute": 20, "prompt": "synthetic-text the owner goes another way"},
+        {"minute": 21, "call": "msg_synthetic_chain_b1", "usage": {"input_tokens": 4, "output_tokens": 40, "cache_creation_input_tokens": 400, "cache_read_input_tokens": 4000}}
+      ]
+    }
+  ]
+}

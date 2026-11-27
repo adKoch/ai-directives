@@ -26,8 +26,9 @@ with_mv_stopping_its_second_rename() {
 # Fails unless ctxm/metrics/ holds the start, the lines and the roll-up, each as it was in ./before/.
 assert_old_files_kept() {
   assert_prints 'REQ-900.md
+counted.csv
 start
-tasks.csv' ls "$METRICS"
+tasks.csv' metrics_files
   assert_same_content "$METRICS/REQ-900.md" before/REQ-900.md
   assert_same_content "$METRICS/tasks.csv" before/tasks.csv
   assert_same_content "$METRICS/start" before/start
@@ -72,8 +73,9 @@ test_a_failing_second_rename_puts_every_file_back_and_writes_no_new_rollup() {
   collect_with_mv_stopping fail
   assert_prints 'mv: synthetic failure
 error: a step of the collection failed, see above; ctxm/metrics/ holds no half-written file' cat stderr
-  assert_prints 'start
-tasks.csv' ls "$METRICS"
+  assert_prints 'counted.csv
+start
+tasks.csv' metrics_files
   assert_same_content "$METRICS/tasks.csv" before.csv
 }
 
@@ -116,8 +118,9 @@ test_a_collection_that_is_done_leaves_only_its_files() {
   project_collected_once
   collected
   assert_prints 'REQ-900.md
+counted.csv
 start
-tasks.csv' ls "$METRICS"
+tasks.csv' metrics_files
   # shellcheck disable=SC2016 # $now and $before are jq's
   assert_prints true jq --null-input --raw-output --rawfile now "$METRICS/tasks.csv" --rawfile before before/tasks.csv \
     '$now != $before and ($now | startswith($before))'

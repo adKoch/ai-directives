@@ -106,4 +106,16 @@ test_calls_a_fork_copied_from_a_session_that_ended_before_the_start_are_never_wr
   assert_prints '4,40,4000,400' line_fields eeeeeeee-0000-4000-8000-000000000001 "${TOKENS[@]}"
 }
 
+# catches: a part of a session at a commit without the lock looked at again once a later part of the session has its
+# line: its calls are not in the record as passed over, so every collection counts it on stderr, and one whose
+# history then changed would write it out of order.
+test_a_part_not_written_before_a_part_that_is_is_passed_over_for_good() {
+  started_project templates-applied-later
+  transcripts session-across-template-update
+  collected
+  collected
+  assert_prints 'note: runs and parts of main sessions at a commit without .ctxm/, not written: 1' cat stderr
+  assert_prints 2 grep --count '^none,call,' "$METRICS/counted.csv"
+}
+
 run_tests

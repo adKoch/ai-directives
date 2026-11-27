@@ -1,14 +1,15 @@
 # The format of `ctxm/metrics/`
 
 What the collector of the `agents-base` template (`.claude/scripts/collect-metrics.sh`) writes into a project, and
-by which rules: the lines of `tasks.csv` and the roll-ups of the plans. The comparison command reads this format. How
-the collector is built and extended: `tests/metrics/collector/README.md`.
+by which rules: the lines of `tasks.csv`, the record of what they counted and the roll-ups of the plans. The
+comparison command reads this format. How the collector is built and extended: `tests/metrics/collector/README.md`.
 
 ## Files
 | File | Holds | Written |
 |---|---|---|
 | `ctxm/metrics/start` | one line: the time the project's metrics start | once, by the project's first collection |
 | `ctxm/metrics/tasks.csv` | the header, then one line per agent run and per part of a main session | by every later collection that finds something; lines are only added |
+| `ctxm/metrics/counted.csv` | the record: the header, then one row per API call and per compaction of a main session that a collection has settled ("The record") | with `tasks.csv`, by every later collection that adds a line or a row; rows are only added |
 | `ctxm/metrics/<plan>.md` | the roll-up of a plan of `ctxm/plans/<plan>.md`: its figures and the fingerprint | by every later collection, whole, for each plan that has lines ("The roll-ups") |
 
 Nothing else is written, anywhere. A collection writes its files all or nothing. It prepares each new file beside
@@ -22,9 +23,10 @@ the collector: it ends with 0. If putting a file back fails too, that file's old
 A collection never removes an old file another collector kept: while the folder holds a `<file>.old.<process id>`
 of a process that is gone, every collection (a dry run too) is refused, and a person settles each file. Two cases
 leave one. A failed put-back: move the old file over its file. A kill no program can catch (`SIGKILL`, a power cut)
-between two renames: the roll-ups renamed before it are new, and `tasks.csv`, renamed last, is old. Remove the old
-files (or move them back); the next collection then finds the lines `tasks.csv` lacks again and rewrites every
-roll-up from them, so the mix heals. A file of the folder that is none of these (another setup's roll-up, written
+between two renames: the roll-ups and the record, renamed before it, are new, and `tasks.csv`, renamed last, is
+old. Move each old file back over its file (the record's at least: a record ahead of `tasks.csv` is refused as out
+of step); the next collection then finds the lines `tasks.csv` lacks again and rewrites every roll-up from them,
+so the mix heals. A file of the folder that is none of these (another setup's roll-up, written
 by its own importer) is never read, changed or removed. The only files the next collection removes are the new
 files a killed collector left (`<file>.new.<process id>`, the process gone). The files hold numbers, times,
 ids, the fixed words and names that fit the patterns below: no prompt, file or report text.
@@ -77,7 +79,8 @@ A value read from outside the collector is checked before use; one that does not
 | task name | a request id with up to two prefixes (`REQ-004`, `AD-REQ-009`) or a release version (`v0.8`), then 1 to 8 parts of 1 to 24 letters and digits, joined by `-`; 80 characters at most | the run is counted and not written |
 | role, model | a plain word: letters, digits and `-` (a model also `.`, `_`, `:`, `[`, `]`) | the run or the part is counted and not written |
 | model, effort in an agent file; template name, library commit in the lock | plain words; 40 or 64 hex digits for a commit | the collection is refused when a line needs that setup |
-| session id, agent id, API call id, time | their id shapes | the transcript is counted as not read whole |
+| session id, agent id, time | their id shapes | the transcript is counted as not read whole |
+| API call id (`message.id`), compaction id (`uuid`) | a letter or a digit, then up to 127 letters, digits, `_` and `-`; a hex digit, then up to 63 hex digits and `-` | the transcript is counted as not read whole |
 | Findings line | the last line of the run's report (the `message` of its last handback call, else its last text; "Key names read from a transcript"), exactly `Findings: <n> blocking, <m> nits`, each count 1 to 9 digits | the run is written with `none` in both columns; a last line that opens with `Findings:` and is none of the format is counted on stderr, and nothing of it is kept |
 | token count | a whole number from 0 to 2^53 − 1, in any form JSON writes it (`1E2`, `10.0`); written as digits | the transcript is counted as not read whole |
 
@@ -92,25 +95,28 @@ spreadsheet formula.
   not written. Its setup is the one in force when it started.
 - **A main session** (a top-level transcript) is written only when it is closed: none of its records is younger
   than 60 minutes, so the session that runs the collector is never written. A line counts only the session's own
-  API calls, never its runs'. A collection that finds calls a session's lines have not counted adds a line for those
-  calls only, and one line per setup when the setup changed between them: a session's lines add up to its transcript.
-- **Each API call counts once**, by its message id, in all the project's transcripts. One call is written as
-  several records that repeat its usage; where they differ, the largest of each kind is the call's. A resumed or
-  forked session's file starts with a copy of the earlier session's records, and its folder holds copies of the
-  earlier runs; a copied run is one line by its agent id. A copied call's records name the earlier session or the
-  new one, so of the sessions they name, the call belongs to one whose line has counted it already (its time falls
-  within that line), else to one that ended before the start (so it is never written), else to the first in the
-  order of their ids.
+  API calls, never its runs'. A collection that finds calls the record does not hold adds a line for those calls
+  only, and one line per setup when the setup changed between them: a session's lines add up to its transcript.
+- **Each API call counts once**, by its message id, in all the project's transcripts, and so does each compaction,
+  by its record's id. One call is written as several records that repeat its usage; where they differ, the largest
+  of each kind is the call's. A resumed or forked session's file starts with a copy of the earlier session's
+  records, and its folder holds copies of the earlier runs; a copied run is one line by its agent id. A copied
+  call's records name the earlier session or the new one. One that the record holds is counted already: no line
+  counts it again, whichever transcripts still hold it. One it does not hold belongs, of the sessions its records
+  name, to the one whose records end first; the order of the ids decides only between two that end at the same
+  second. A session that ended before the start ends before any session that copied it after the start, so its
+  calls are never written through a copy.
 - **The setup in force** at a time is the project's state at the newest commit of the checked out branch, not
   later than that time, that changed `.ctxm/ctxm.lock` or `.claude/agents/`. A run or a part of a session at a
   commit without `.ctxm/ctxm.lock` is counted on stderr and not written.
 - **The start.** The first collection writes `ctxm/metrics/start` and no line. From then on a run is written only
   if its last record is later than the start, and a main session only if its last record is: such a session is
-  counted whole, its calls from before the start included. With the start record missing, the next collection is a
-  first one again: it starts the metrics at that moment and adds nothing older, whatever transcripts are on disk.
+  counted whole, its calls from before the start included, but for what the record holds as passed over. With
+  the start record missing, the next collection is a first one again: it starts the metrics at that moment and
+  adds nothing older, whatever transcripts are on disk.
 - A run that is not written (unfinished, without a valid task name, unreadable) is looked at again by every
   collection. A run that has its line is never read again. A part of a main session that is not written is
-  passed over once a later part of that session has its line.
+  passed over for good (the record holds it as `none`) once a later part of that session has its line.
 
 ## The roll-ups
 The collector rewrites `ctxm/metrics/<plan>.md` for each plan of `ctxm/plans/` that has lines, whole, from `tasks.csv`,
@@ -165,25 +171,45 @@ the fixed words of the collector: every value passes the field check of the line
 - **Calls a run makes after its line was written** (a finished run that is continued).
 - A record whose model is `<synthetic>`: Claude Code writes it for a message it made itself, without an API call.
 
-## Known limit: a copy that outlives its original
-Whether a call was counted is read from the transcripts that hold it and the times of the lines: `tasks.csv` keeps
-no call ids. So when a fork's or a resume's copy names the new session and the earlier session's own transcript is
-deleted (Claude Code removes old ones) before the new session has a line, the next collection counts the copied
-calls again, under the new session; and a session that ended before the start, deleted the same way, is counted
-through such a copy. A copy that keeps the earlier session's id, or a new session that has its line before the
-deletion, is counted once.
+## The record
+`ctxm/metrics/counted.csv` holds, by id, the API calls and compactions of main sessions that a collection has
+settled, so whether one was counted is read from it and never from the times of the lines. A copy that outlives its
+original (the original deleted, as Claude Code removes old transcripts, or left out as not readable whole) adds
+nothing, and no call is lost along a chain of copies. Only the collector writes it, together with `tasks.csv`, and
+only adds rows; it is never rebuilt from the transcripts ("Refusals"). Its header is the names of its columns, in
+this order, joined by commas:
+
+| Column | Means |
+|---|---|
+| `line` | the number of the line of `tasks.csv` that counts the event, the first under the header being 1; `none` when the event is passed over for good |
+| `kind` | `call` (an API call) or `compaction` |
+| `id` | the call's message id or the compaction's record id, in the shapes of "What a value may look like" |
+
+A row holds no other value from a transcript and passes the field check of the lines. Every line of a main session
+has at least one row; a run's line has none, as a run is counted once by its agent id. An event is passed over for
+good (`none`) when it belongs to a session that ended before the start and another session's transcript holds a
+copy of it, so no copy writes it once the original is gone, nor the original if it is resumed in place later; and
+when it belongs to a part of a session that is not written before a part that is ("What becomes a line").
+
+What no collection saw is not in the record: a session that ended before the start and was copied after it, its
+records renamed, then deleted before any collection saw the copy, leaves only the copy, whose calls are then its
+own.
 
 ## Refusals
 The collector exits 1 with one `error:` line and writes nothing when, at the first collection as at any other:
 a required tool is missing; the project folder is not the top of the project's main checkout (a subfolder, a
 linked worktree) or its name is no plain name; the transcripts folder is missing or holds a symbolic link on the
-way to a transcript; `ctxm/plans` or `ctxm/releases` is a symbolic link; `ctxm`, `ctxm/metrics`, `start` or
-`tasks.csv` is a symbolic link, or not a folder or a plain file; `ctxm/metrics` holds an old file that a collector
-that is gone kept ("Files"). A later collection also when: a roll-up's place (`ctxm/metrics/<plan>.md`) is a
-symbolic link or no plain file; `start` holds anything but one past time;
+way to a transcript; `ctxm/plans` or `ctxm/releases` is a symbolic link; `ctxm`, `ctxm/metrics`, `start`,
+`tasks.csv` or `counted.csv` is a symbolic link, or not a folder or a plain file; `ctxm/metrics` holds an old
+file that a collector that is gone kept ("Files"). A later collection also when: a roll-up's place
+(`ctxm/metrics/<plan>.md`) is a symbolic link or no plain file; `start` holds anything but one past time;
 `tasks.csv` has a header that is none of the format's (an earlier header of it, the first 17 columns, is read, and the
 file moved to the current header with `unknown` in the columns added since; a cut after any other number of columns
-is refused) or a line that is none of the format; a line needs a setup whose lock is not in the format ctxm 0.7
+is refused) or a line that is none of the format; `tasks.csv` is there without `counted.csv`, or `counted.csv`
+without `tasks.csv`; `counted.csv` has another header, a row that is none of the format ("The record") or names an
+event twice, or is out of step with `tasks.csv` (a row names a line that is no main session's line there, or a
+main session's line has no row): each naming the file, never rebuilt from the transcripts, which would count again
+what the copies of a deleted original hold; a line needs a setup whose lock is not in the format ctxm 0.7
 writes (`version = 6`) or whose lock or agent files name something that is no plain word. A transcript with a line
 that is no JSON record, lacks what a record must carry, or is longer than 8 MiB is left out whole and counted on
 stderr; so is a run whose file name holds no agent id or whose `.meta.json` is no JSON object, and a transcript
