@@ -15,11 +15,18 @@ Nothing else is written, anywhere. A collection writes its files all or nothing.
 its place (`<file>.new.<process id>`) and keeps each file it replaces under a second name (`<file>.old.<process
 id>`, a hard link) before it renames the first one into place. A collection that is interrupted (INT, TERM, HUP) or
 fails after some renames puts every old file back and removes the new ones it had placed, so `ctxm/metrics/` holds
-what it held before, byte for byte. Only a kill that no program can catch (`SIGKILL`, a power cut) between two
-renames can leave some files new and others old; the next collection then removes the working files, so those old
-bytes are gone. A file of the folder that is none of these (another setup's roll-up, written by its own importer)
-is never read, changed or removed; only the working files a killed collector left (`<file>.new.<process id>`,
-`<file>.old.<process id>`, the process gone) are removed, by the next collection. The files hold numbers, times,
+what it held before, byte for byte. Once the last rename is done the write is whole, and a signal no longer stops
+the collector: it ends with 0. If putting a file back fails too, that file's old bytes stay in its
+`<file>.old.<process id>`, which the one `error:` line names.
+
+A collection never removes an old file another collector kept: while the folder holds a `<file>.old.<process id>`
+of a process that is gone, every collection (a dry run too) is refused, and a person settles each file. Two cases
+leave one. A failed put-back: move the old file over its file. A kill no program can catch (`SIGKILL`, a power cut)
+between two renames: the roll-ups renamed before it are new, and `tasks.csv`, renamed last, is old. Remove the old
+files (or move them back); the next collection then finds the lines `tasks.csv` lacks again and rewrites every
+roll-up from them, so the mix heals. A file of the folder that is none of these (another setup's roll-up, written
+by its own importer) is never read, changed or removed. The only files the next collection removes are the new
+files a killed collector left (`<file>.new.<process id>`, the process gone). The files hold numbers, times,
 ids, the fixed words and names that fit the patterns below: no prompt, file or report text.
 
 ## Columns
@@ -117,6 +124,9 @@ git and `ctxm/`; the same inputs give the same bytes. It never writes a roll-up 
   task name in backticks in parentheses, `**1A standard-worker: the title** (task `REQ-004-1A-stack-split`)` or
   `**T-1 release-tester** (`v0.8-T-1`)`. A task named anywhere else (a dependency, a list of done items) is no item
   of the plan, and nothing else of the text is read or kept. A plan that no line names has no roll-up.
+  A plan may give another repository's items headings of their own. The release plan `v0.8` of context-manager
+  carries the template library's `AD-` items as part of release 0.8, so they are items of both their own plan and
+  `v0.8`: their lines count in both roll-ups and in both periods. Their Product reads `unknown` (below).
 - **Where the metrics start**: the roll-up gives the project's start, the time the plan file was first committed, and
   `coverage`: `partial` when the start falls after that commit (what ended before it is in no number), `whole`
   otherwise, `unknown` when the file was never committed.
@@ -168,8 +178,9 @@ The collector exits 1 with one `error:` line and writes nothing when, at the fir
 a required tool is missing; the project folder is not the top of the project's main checkout (a subfolder, a
 linked worktree) or its name is no plain name; the transcripts folder is missing or holds a symbolic link on the
 way to a transcript; `ctxm/plans` or `ctxm/releases` is a symbolic link; `ctxm`, `ctxm/metrics`, `start` or
-`tasks.csv` is a symbolic link, or not a folder or a plain file. A later collection also when: a roll-up's place
-(`ctxm/metrics/<plan>.md`) is a symbolic link or no plain file; `start` holds anything but one past time;
+`tasks.csv` is a symbolic link, or not a folder or a plain file; `ctxm/metrics` holds an old file that a collector
+that is gone kept ("Files"). A later collection also when: a roll-up's place (`ctxm/metrics/<plan>.md`) is a
+symbolic link or no plain file; `start` holds anything but one past time;
 `tasks.csv` has a header that is none of the format's (an earlier header of it, the first 17 columns, is read, and the
 file moved to the current header with `unknown` in the columns added since; a cut after any other number of columns
 is refused) or a line that is none of the format; a line needs a setup whose lock is not in the format ctxm 0.7
@@ -178,7 +189,9 @@ that is no JSON record, lacks what a record must carry, or is longer than 8 MiB 
 stderr; so is a run whose file name holds no agent id or whose `.meta.json` is no JSON object, and a transcript
 that is no plain file (a folder, a pipe). A step that fails without a refusal of its own (a full disk, a read-only
 folder) ends the collector the same way: exit 1, one `error:` line, nothing half-written (a failing rename after
-others puts the old files back, "Files"). A closed stdout loses only the result: the collection is done, exit 0.
+others puts the old files back, "Files"), and so does an interrupt (INT, TERM, HUP) before the last rename. Only
+when putting a file back fails too is a file left new: the line then names it and where its old bytes are. A
+closed stdout loses only the result: the collection is done, exit 0.
 
 ## Tools
 The templates ship no toolchain. The collector needs these from the project's own, on the `PATH`, and checks for

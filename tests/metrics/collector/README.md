@@ -112,9 +112,10 @@ payload holds the mark), `refusals.test.sh` for the project.
 
 ## What must not change
 - Only `store.sh` writes, only into `ctxm/metrics/`, and only through `prepare_file` and `publish_prepared` (prepare
-  every file, keep each old one, then rename them; `restore_renamed_files` undoes a write that stopped). No
-  temporary file anywhere else: facts travel through pipes and arguments. A roll-up is written only for a
-  plan file of `ctxm/plans/`; no other file of `ctxm/metrics/` is read or changed.
+  every file, keep each old one, then rename them; `restore_renamed_files` undoes a write that stopped, and an
+  old file it could not put back is never removed: `refuse_unsettled_files` stops every later collection until a
+  person settles it). No temporary file anywhere else: facts travel through pipes and arguments. A roll-up is
+  written only for a plan file of `ctxm/plans/`; no other file of `ctxm/metrics/` is read or changed.
 - Only `facts.jq` knows a transcript's key names, and nothing but numbers, ids and names that pass `format.jq`
   leaves it. A report's text stops at its last line: only the two counts of a `Findings:` line are kept. `setup.jq`
   is the same for the lock and the agent files.

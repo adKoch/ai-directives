@@ -13,7 +13,8 @@
 # collection adds nothing and rewrites the same roll-ups; an interrupted one writes nothing.
 # Prints the result on stdout (how many lines, how many roll-ups), and on stderr a count for each reason a run or a
 # session was not written. Exits 0 when the collection is done (a closed stdout loses only the result), 1 when it
-# is refused or a step fails (one `error:` line; nothing written).
+# is refused, interrupted before its last rename or a step fails (one `error:` line; nothing written, unless a
+# replaced file could not be put back: the line says which and where its old bytes are).
 # Needs the tools metrics/tools.sh names, from the project's own toolchain, and checks for them first.
 # The format and the rules: docs/metrics-format.md of the template library.
 set -euo pipefail
@@ -52,10 +53,11 @@ main() {
   forget_inherited_repository
   find_project "$PROJECT_FOLDER"
   refuse_unsafe_store
+  refuse_unsettled_files
   refuse_linked_sources
   find_transcripts
   name_project
-  trap 'refuse "the collection was interrupted; ctxm/metrics/ holds no half-written file"' TERM INT HUP
+  trap 'exit "$INTERRUPTED_STATUS"' TERM INT HUP
   if has_stored "$START_FILE"; then
     collect
   else
@@ -64,16 +66,14 @@ main() {
 }
 
 # Runs when the collector ends, however it ends: a write that did not reach its end is undone, with no further
-# signal stopping that, and a step that failed without a refusal of its own (a tool that stopped, a full disk) gets
-# the one line a refusal has; both end with 1.
+# signal stopping that, and the end gets its one `error:` line (a refusal has printed its own); all end with 1.
 end_collector() {
   local status=$?
   trap '' TERM INT HUP
-  restore_renamed_files || tell_unrestored
+  restore_renamed_files
   discard_written_files
   ((status == 0)) && return
-  ((status == REFUSED_STATUS)) \
-    || printf 'error: a step of the collection failed, see above; ctxm/metrics/ holds no half-written file\n' >&2
+  tell_stop "$status"
   exit 1
 }
 
@@ -134,7 +134,9 @@ collect() {
 }
 
 # Writes the added lines and the roll-ups together, all or nothing (store.sh): every place is checked and every file
-# prepared before the first is renamed, and a stop before the last rename puts the old files back.
+# prepared before the first is renamed, and a stop before the last rename puts the old files back. tasks.csv is
+# renamed last: a kill that cuts the renames off (no trap runs) leaves it old, so its missing lines are found again
+# and the next collection rewrites every roll-up from them.
 store_collection() {
   local plan=$1 count index name
   count="$(plan_part '.rollups | length' "$plan")"

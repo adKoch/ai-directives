@@ -33,15 +33,30 @@ tasks.csv' ls "$METRICS"
   assert_same_content "$METRICS/start" before/start
 }
 
-# catches: a collection interrupted after its first rename leaving that file new and the rest old: a roll-up that
-# counts lines tasks.csv does not hold.
-test_a_collection_interrupted_after_its_first_rename_puts_every_file_back() {
-  project_collected_once
-  with_mv_stopping_its_second_rename interrupt
+
+# Collects with the collector's mv stopping its second rename the way the word says.
+collect_with_mv_stopping() {
+  with_mv_stopping_its_second_rename "$1"
   PATH="$PWD/tools:$PATH" collect
   assert_prints 1 cat status
+}
+
+# catches: a collection interrupted right after a rename returns, before it has noted it, leaving that file new: a
+# roll-up that counts lines tasks.csv does not hold.
+test_a_collection_interrupted_right_after_its_last_rename_puts_every_file_back() {
+  project_collected_once
+  collect_with_mv_stopping interrupt-after
   assert_prints 'error: the collection was interrupted; ctxm/metrics/ holds no half-written file' cat stderr
   assert_prints 4 cat tools/mv-calls
+  assert_old_files_kept
+}
+
+# catches: a collection interrupted between two renames, the later one not done, leaving the first file new.
+test_a_collection_interrupted_between_two_renames_puts_every_file_back() {
+  project_collected_once
+  collect_with_mv_stopping interrupt-before
+  assert_prints 'error: the collection was interrupted; ctxm/metrics/ holds no half-written file' cat stderr
+  assert_prints 3 cat tools/mv-calls
   assert_old_files_kept
 }
 
@@ -54,14 +69,45 @@ test_a_failing_second_rename_puts_every_file_back_and_writes_no_new_rollup() {
   cp "$METRICS/tasks.csv" before.csv
   commit_plan REQ-900 "$PLAN_TEXT"
   transcripts reviewed-items
-  with_mv_stopping_its_second_rename fail
-  PATH="$PWD/tools:$PATH" collect
-  assert_prints 1 cat status
+  collect_with_mv_stopping fail
   assert_prints 'mv: synthetic failure
 error: a step of the collection failed, see above; ctxm/metrics/ holds no half-written file' cat stderr
   assert_prints 'start
 tasks.csv' ls "$METRICS"
   assert_same_content "$METRICS/tasks.csv" before.csv
+}
+
+# catches: the old file of a place that could not be put back removed while the error line names it (the only copy
+# of those bytes), or more than one error line, or one that claims nothing is half-written.
+test_a_restore_that_fails_keeps_the_old_bytes_where_its_one_error_line_says() {
+  local kept
+  project_collected_once
+  collect_with_mv_stopping fail-from-then-on
+  kept="$(cd "$METRICS" && printf '%s\n' REQ-900.md.old.*)"
+  assert_same_content "$METRICS/$kept" before/REQ-900.md
+  assert_prints "mv: synthetic failure
+mv: synthetic failure
+error: the collection stopped and could not put back ctxm/metrics/REQ-900.md (its old bytes are in $kept); move\
+ each old file over its file; the next collection refuses while one is left" cat stderr
+  assert_same_content "$METRICS/tasks.csv" before/tasks.csv
+}
+
+# catches: a later collection that removes an old file a stopped collector kept, or writes over the place it
+# belongs to, before a person has settled it.
+test_an_old_file_a_stopped_collector_kept_stops_the_next_collection_and_stays() {
+  local dead
+  project_collected_once
+  sleep 0 &
+  dead=$!
+  wait "$dead"
+  printf 'old bytes\n' >"$METRICS/REQ-900.md.old.$dead"
+  collect
+  assert_prints 1 cat status
+  assert_prints "error: ctxm/metrics/ holds 1 old file(s) (<file>.old.<process id>) that a stopped collection kept;\
+ move each over its file, or remove it once its file is right; nothing was written" cat stderr
+  assert_prints 'old bytes' cat "$METRICS/REQ-900.md.old.$dead"
+  assert_same_content "$METRICS/REQ-900.md" before/REQ-900.md
+  assert_same_content "$METRICS/tasks.csv" before/tasks.csv
 }
 
 # catches: the old files a collection keeps while it renames left behind once it is done, or a collection that

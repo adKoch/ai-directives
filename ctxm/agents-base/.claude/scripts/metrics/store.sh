@@ -16,6 +16,8 @@ PREPARED_PLACES=()
 # The places whose rename has begun, so whose old file must be put back if the write stops before its end. A place
 # is named here before its rename: a stop right after the rename returns still finds it.
 RENAMED_PLACES=()
+# The places a stopped write could not put back: each keeps its old file (`<file>.old.<process id>`) for good.
+UNRESTORED_PLACES=()
 
 # Ends the collector when a symbolic link, or anything but a folder or a plain file, stands where the collector
 # reads and writes.
@@ -68,7 +70,8 @@ kept_name() {
 }
 
 # Renames every prepared file into place, the last step of a collection: the old files are kept first, and dropped
-# only once every rename is done.
+# only once every rename is done. From the last rename on, the write is whole: a signal no longer stops the
+# collector, so it never reports as stopped a collection that wrote everything.
 publish_prepared() {
   local place
   keep_old_files
@@ -76,6 +79,7 @@ publish_prepared() {
     RENAMED_PLACES+=("$place")
     mv -f -T -- "$(prepared_name "$place")" "$place"
   done
+  trap '' TERM INT HUP
   RENAMED_PLACES=()
   discard_written_files
 }
@@ -95,13 +99,13 @@ write_new_file() (
   printf '%s\n' "$2" >"$1"
 )
 
-# Removes the files a collector that was killed left (`<file>.new.<its process id>`, `<file>.old.<its process id>`)
-# when that process is gone; the files of a collector that still runs are never touched. Called once per write,
-# before its first file is prepared.
+# Removes the new files a collector that was killed left (`<file>.new.<its process id>`) when that process is gone;
+# the files of a collector that still runs are never touched, nor any old file kept (refuse_unsettled_files).
+# Called once per write, before its first file is prepared.
 remove_abandoned_files() (
   local file process
   shopt -s nullglob
-  for file in "$PROJECT/$METRICS_FOLDER"/*.new.* "$PROJECT/$METRICS_FOLDER"/*.old.*; do
+  for file in "$PROJECT/$METRICS_FOLDER"/*.new.*; do
     process="${file##*.}"
     [[ "$process" =~ ^[0-9]+$ ]] || continue
     kill -0 "$process" 2>/dev/null || rm -f -- "$file"
@@ -110,29 +114,58 @@ remove_abandoned_files() (
 
 # Puts back the old file of every place a stopped write had begun to rename (unless the rename never happened, so
 # the place is still its old file), and removes the new file of a place that had none (a folder put there meanwhile
-# is left); collect-metrics.sh calls it when the collector ends. Fails when a file could not be put back.
+# is left); collect-metrics.sh calls it when the collector ends. A place that cannot be put back is named in
+# UNRESTORED_PLACES, and its old file stays.
 restore_renamed_files() {
-  local place kept failed=0
+  local place
   for place in "${RENAMED_PLACES[@]}"; do
-    kept="$(kept_name "$place")"
-    if [[ -e "$kept" ]]; then
-      [[ "$kept" -ef "$place" ]] || mv -f -T -- "$kept" "$place" || failed=1
-    elif [[ ! -d "$place" ]]; then
-      rm -f -- "$place" || failed=1
-    fi
+    restore_place "$place" || UNRESTORED_PLACES+=("$place")
   done
   RENAMED_PLACES=()
-  return "$failed"
 }
 
-# Removes this collector's working files: the prepared files a write did not rename, and the old files it kept.
+restore_place() {
+  local place=$1 kept
+  kept="$(kept_name "$place")"
+  if [[ -e "$kept" ]]; then
+    [[ "$kept" -ef "$place" ]] || mv -f -T -- "$kept" "$place"
+  elif [[ ! -d "$place" ]]; then
+    rm -f -- "$place"
+  fi
+}
+
+# Removes this collector's working files: the prepared files a write did not rename, and the old files it kept,
+# except the old file of a place it could not put back (the only copy of those bytes).
 discard_written_files() {
   local place
   for place in "${PREPARED_PLACES[@]}"; do
-    rm -f -- "$(prepared_name "$place")" "$(kept_name "$place")"
+    rm -f -- "$(prepared_name "$place")"
+    is_unrestored "$place" || rm -f -- "$(kept_name "$place")"
   done
   PREPARED_PLACES=()
 }
+
+is_unrestored() {
+  local place
+  for place in "${UNRESTORED_PLACES[@]}"; do
+    [[ "$place" != "$1" ]] || return 0
+  done
+  return 1
+}
+
+# Ends the collector when a collector that is gone left an old file it kept (`<file>.old.<process id>`): the only
+# copy of bytes a stopped write could not put back, or of a write a kill cut off. Nothing is written until a person
+# has moved each over its file or removed it; a collector that still runs is left alone.
+refuse_unsettled_files() (
+  local file process count=0
+  shopt -s nullglob
+  for file in "$PROJECT/$METRICS_FOLDER"/*.old.*; do
+    process="${file##*.}"
+    [[ ! "$process" =~ ^[0-9]+$ ]] || kill -0 "$process" 2>/dev/null || count=$((count + 1))
+  done
+  ((count == 0)) || refuse "$METRICS_FOLDER/ holds $count old file(s) (<file>.old.<process id>) that a stopped" \
+    "collection kept; move each over its file, or remove it once its file is right; nothing was written"
+)
 
 # Ends the collector when a roll-up's place is a symbolic link or anything but a plain file: a write there would
 # land outside the project, or inside a folder.
