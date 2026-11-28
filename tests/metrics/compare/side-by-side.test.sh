@@ -99,4 +99,15 @@ test_items_that_no_other_column_has_are_each_listed_once() {
   assert_prints 3 grep --count '^### Item ' stdout
 }
 
+# catches: the items listed in the order of their names as text (REQ-900-10A before REQ-900-2A), while the columns read
+# numbers as numbers. The rule is run on its own: no plan of the fixtures has a run for such an item.
+test_items_are_listed_with_the_numbers_of_their_names_as_numbers() {
+  source "$REPO_ROOT/scripts/compare/program.sh"
+  # shellcheck disable=SC2016 # jq's own text
+  assert_prints '["REQ-900-2A-x","REQ-900-10A-x"]' comparison_jq \
+    "collector/format collector/rollup collector/rollup_text compare/reading compare/figures compare/comparison_text
+    compare/comparison" '[{rollup: {items: [{item: "REQ-900-10A-x"}, {item: "REQ-900-2A-x"}]}}] | item_names' \
+    --null-input --compact-output
+}
+
 run_tests

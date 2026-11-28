@@ -77,14 +77,15 @@ test_a_linked_record_or_one_that_is_no_plain_file_is_refused() {
 }
 
 # catches: a record with a row the collector cannot read taken as it stands: a payload in a field, a fourth field,
-# an id of no id shape or a line that is no line would decide what is counted, or reach the output.
+# an id of no id shape (a compaction id that is hex but no uuid too) or a line that is no line would decide what is
+# counted, or reach the output.
 test_a_record_with_a_row_that_is_no_row_of_the_record_is_refused_and_left_byte_for_byte() {
   local row
   collected_project
   cp "$RECORD" whole.csv
   for row in '=synthetic-text,"x"' '2,call,msg_synthetic_extra,synthetic-text' '2,call,"msg_synthetic_quoted"' \
     $'2,call,msg_synthetic_crlf\r' '2,call,=synthetic-text' '0,call,msg_synthetic_zero' '02,call,msg_synthetic_lead' \
-    '2,synthetic-text,msg_synthetic_kind' '2,compaction,msg_synthetic_not_a_uuid' ''; do
+    '2,synthetic-text,msg_synthetic_kind' '2,compaction,msg_synthetic_not_a_uuid' '2,compaction,0123456789abcdef' ''; do
     { cat whole.csv; printf '%s\n' "$row"; } >"$RECORD"
     keep_metrics
     collect
@@ -137,7 +138,7 @@ test_an_interrupt_at_the_last_rename_leaves_the_lines_and_their_record_as_they_w
     keep_metrics
     transcripts finished-run
     mkdir tools
-    ln -s "$COLLECTOR_TESTS/standins/stopping-second-mv.sh" tools/mv
+    ln -s "$COLLECTOR_TESTS/standins/stopping-mv.sh" tools/mv
     printf '%s\n' "$mode" >tools/mv-stop
     PATH="$PWD/tools:$PATH" collect
     assert_refused_unchanged 'the collection was interrupted; ctxm/metrics/ holds no half-written file'
@@ -161,8 +162,31 @@ tasks.csv' metrics_files
   printf 'old bytes\n' >"$RECORD.old.$dead"
   keep_metrics
   collect
-  assert_refused_unchanged "ctxm/metrics/ holds 1 old file(s) (<file>.old.<process id>) that a stopped collection" \
-    'kept; move each over its file, or remove it once its file is right; nothing was written'
+  assert_refused_unchanged "ctxm/metrics/ holds 1 old file(s) a stopped collection kept, the first counted.csv.old.$dead;" \
+    'move each over its file (the name without .old.<process id>), or remove it once its file is right;' \
+    'nothing was written'
+}
+
+# catches: an empty tasks.csv or record refused as a missing one ("is there without"), or a file of any size read whole
+# into the collector's memory: both are committed files another tool or a person may edit.
+test_an_empty_or_too_large_lines_file_or_record_is_refused_naming_it() {
+  local file
+  collected_project
+  for file in tasks.csv counted.csv; do
+    : >"$METRICS/$file"
+    refuse_the_file_as_it_stands "$file" "is empty (0 bytes); $RESTORE_RECORD"
+    head --bytes=16777217 /dev/zero | tr '\0' x >"$METRICS/$file"
+    refuse_the_file_as_it_stands "$file" "is larger than the collector reads (16777216 bytes); nothing was written"
+    rm -rf project transcripts
+    collected_project
+  done
+}
+
+# Collects with the file of ctxm/metrics/ as a test left it, and fails unless that is refused with the line naming it.
+refuse_the_file_as_it_stands() {
+  keep_metrics
+  collect
+  assert_refused_unchanged "ctxm/metrics/$1 $2"
 }
 
 run_tests

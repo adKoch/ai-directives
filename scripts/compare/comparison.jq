@@ -41,15 +41,16 @@ def setups($shown):
       rollups: (.value | map(.rollup))
     });
 
-# A plan name as it sorts among a setup's plans: its numbers as numbers, so `v0.9` comes before `v0.10`.
-def plan_order: [scan("[0-9]+|[^0-9]+") | tonumber? // .];
+# A name as it sorts: its numbers as numbers, so `v0.9` comes before `v0.10` and `REQ-900-1A` before `REQ-900-10A`.
+def natural_order: [scan("[0-9]+|[^0-9]+") | tonumber? // .];
 
 # A column for each roll-up of each setup, in the setups' order and then their plans': [{setup, plan, rollup}].
 # Plans of different names stand side by side: later releases of one project, or the plans of different projects.
-def columns: map(.setup as $setup | .rollups | sort_by(.plan | plan_order) | .[] | {setup: $setup, plan, rollup: .});
+def plan_columns:
+  map(.setup as $setup | .rollups | sort_by(.plan | natural_order) | .[] | {setup: $setup, plan, rollup: .});
 
 # The task names of every column's items, each once: an item that only one column has gets `none` in the others.
-def item_names: [.[].rollup.items[].item] | unique;
+def item_names: [.[].rollup.items[].item] | unique | sort_by(natural_order);
 
 def shown_projects: map(select(.kind == "project") | {key: (.project | tostring), value: .shown}) | from_entries;
 
@@ -57,7 +58,7 @@ def compared:
   shown_projects as $shown
   | map(select(.kind == "rollup") | read_fact)
   | setups($shown)
-  | columns as $columns
+  | plan_columns as $columns
   | {setups: map(del(.rollups)), columns: $columns, items: ($columns | item_names)};
 
 # What compare-setups.sh prints: {text}, or {refusal} with the one line that says why nothing is shown.

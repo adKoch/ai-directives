@@ -9,7 +9,7 @@
 # a budget stop).
 # shellcheck source=lib/common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
-require_tools bash jq shellcheck git timeout
+require_tools bash jq shellcheck git timeout sleep
 ensure_budget "$@"
 
 readonly LOG_DIR="$CACHE_DIR/check"
@@ -17,7 +17,7 @@ readonly STEPS=(lint test)
 
 main() {
   local step failed=0
-  make_ignored_cache_folder check
+  make_cache_folder check
   for step in "${STEPS[@]}"; do
     run_step "$step" || failed=$((failed + 1))
   done

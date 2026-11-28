@@ -7,7 +7,7 @@
 source "$(dirname "${BASH_SOURCE[0]}")/comparing.sh"
 
 # What the comparison calls, without jq.
-readonly TOOLS_WITHOUT_JQ=(bash dirname basename wc timeout)
+readonly TOOLS_WITHOUT_JQ=(bash dirname basename wc timeout sleep)
 readonly ROLLUP=alpha/project/$ROLLUP_FILE
 readonly NOT_READ='is no roll-up in the format of the collector (docs/metrics-format.md, The roll-ups): collect the'\
 ' project again with the current templates, or move the file out of the folder'
@@ -129,6 +129,7 @@ test_a_ctxm_folder_that_is_a_link_out_of_the_project_is_refused() {
 # catches: a roll-up or a ctxm/metrics/ folder the comparison may not read, refused for another reason or with
 # bash's own line beside its own, which prints the place as it is.
 test_a_rollup_or_a_metrics_folder_that_cannot_be_read_is_refused_in_one_escaped_line() {
+  skip_when_run_as_root
   local metrics=alpha/project/ctxm/metrics locked
   rolled_up_project alpha one-setup
   locked="$metrics/${ESCAPE}[31m${TURN_AROUND}REQ-901.md"

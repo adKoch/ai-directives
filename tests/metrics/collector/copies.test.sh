@@ -14,19 +14,35 @@ readonly FORK_SESSIONS=(eeeeeeee-0000-4000-8000-000000000001 eeeeeeee-0000-4000-
 
 # catches: a call lost along a chain of copies: the call A made inside the time B's line spans taken for one B's
 # line counted, so that once A is closed it lands in no line.
-test_a_chain_of_three_sessions_counts_every_call_once() {
-  started_project one-setup
-  TRANSCRIPTS_EPOCH="$(minutes_ago 157)" transcripts three-session-chain 100
-  collected
-  # The collector reads the clock: the same files five minutes older leave A quiet for an hour, so closed.
-  TRANSCRIPTS_EPOCH="$(minutes_ago 162)" transcripts three-session-chain
-  collected
-  cp "$METRICS/tasks.csv" second-collection.csv
-  collected
-  assert_same_content "$METRICS/tasks.csv" second-collection.csv
-  assert_prints '1,10,1000,100' line_fields "$CHAIN_W" "${TOKENS[@]}"
-  assert_prints '6,60,6000,600' line_fields "$CHAIN_B" "${TOKENS[@]}"
-  assert_prints '8,80,8000,800' line_fields "$CHAIN_A" "${TOKENS[@]}"
+test_a_chain_of_three_sessions_counts_every_call_once_in_both_id_orders() {
+  local order ids
+  for order in given reversed; do
+    rm -rf project transcripts first
+    started_project one-setup
+    TRANSCRIPTS_EPOCH="$(minutes_ago 157)" transcripts_in_id_order "$order" three-session-chain 100
+    collected
+    # The collector reads the clock: the same files five minutes older leave A quiet for an hour, so closed.
+    TRANSCRIPTS_EPOCH="$(minutes_ago 162)" transcripts_in_id_order "$order" three-session-chain
+    collected
+    mkdir first
+    cp "$METRICS/tasks.csv" "$METRICS/counted.csv" first/
+    collected
+    assert_nothing_added
+    mapfile -t ids < <(chain_ids_by_tokens "$order")
+    assert_prints '1,10,1000,100' line_fields "${ids[0]}" "${TOKENS[@]}"
+    assert_prints '6,60,6000,600' line_fields "${ids[1]}" "${TOKENS[@]}"
+    assert_prints '8,80,8000,800' line_fields "${ids[2]}" "${TOKENS[@]}"
+  done
+}
+
+# Prints the ids of the chain's sessions in the order of their sums (the last, the middle, the first to start), as the
+# id order has them: the reversed shape gives each session the id that stands opposite its own.
+chain_ids_by_tokens() {
+  if [[ "$1" == given ]]; then
+    printf '%s\n' "$CHAIN_W" "$CHAIN_B" "$CHAIN_A"
+  else
+    printf '%s\n' "$CHAIN_A" "$CHAIN_B" "$CHAIN_W"
+  fi
 }
 
 # Builds a started project and the transcripts of the shape in the id order (given, reversed), collects once, and

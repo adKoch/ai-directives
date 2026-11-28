@@ -2,7 +2,8 @@
 
 What the collector of the `agents-base` template (`.claude/scripts/collect-metrics.sh`) writes into a project, and
 by which rules: the lines of `tasks.csv`, the record of what they counted and the roll-ups of the plans. The
-comparison command reads this format. How the collector is built and extended: `tests/metrics/collector/README.md`.
+comparison command (`scripts/compare-setups.sh`, `docs/compare-setups.md`) reads this format. How the collector is
+built and extended: `tests/metrics/collector/README.md`.
 
 ## Files
 | File | Holds | Written |
@@ -21,15 +22,17 @@ the collector: it ends with 0. If putting a file back fails too, that file's old
 `<file>.old.<process id>`, which the one `error:` line names.
 
 A collection never removes an old file another collector kept: while the folder holds a `<file>.old.<process id>`
-of a process that is gone, every collection (a dry run too) is refused, and a person settles each file. Two cases
-leave one. A failed put-back: move the old file over its file. A kill no program can catch (`SIGKILL`, a power cut)
-between two renames: the roll-ups and the record, renamed before it, are new, and `tasks.csv`, renamed last, is
-old. Move each old file back over its file (the record's at least: a record ahead of `tasks.csv` is refused as out
+of a process that is gone, where `<file>` is one of the collector's own (`start`, `tasks.csv`, `counted.csv` or
+`<plan>.md`), every collection (a dry run too) is refused, and a person settles each file; the `error:` line names the
+first and counts all. Two cases leave one. A failed put-back of a place that had a file: move the old file over
+its file (a place that was new has none: remove its new file, as the line says). A kill no program can catch
+(`SIGKILL`, a power cut) between two renames: each file renamed before it is new, with its old file beside it, and the
+others are old. Move each old file back over its file (the record's at least: a record ahead of `tasks.csv` is refused as out
 of step); the next collection then finds the lines `tasks.csv` lacks again and rewrites every roll-up from them,
 so the mix heals. A file of the folder that is none of these (another setup's roll-up, written
-by its own importer) is never read, changed or removed. The only files the next collection removes are the new
-files a killed collector left (`<file>.new.<process id>`, the process gone). The files hold numbers, times,
-ids, the fixed words and names that fit the patterns below: no prompt, file or report text.
+by its own importer, or a file named like an old file that is none of the collector's own) is never read, changed or
+removed. The only files the next collection removes are the new files a killed collector left
+(`<own file>.new.<process id>`, the process gone). The files hold numbers, times, ids, the fixed words and names that fit the patterns below: no prompt, file or report text.
 
 ## Columns
 In this order; the header is the names joined by commas. A column is only ever added at the end.
@@ -80,7 +83,7 @@ A value read from outside the collector is checked before use; one that does not
 | role, model | a plain word: letters, digits and `-` (a model also `.`, `_`, `:`, `[`, `]`) | the run or the part is counted and not written |
 | model, effort in an agent file; template name, library commit in the lock | plain words; 40 or 64 hex digits for a commit | the collection is refused when a line needs that setup |
 | session id, agent id, time | their id shapes | the transcript is counted as not read whole |
-| API call id (`message.id`), compaction id (`uuid`) | a letter or a digit, then up to 127 letters, digits, `_` and `-`; a hex digit, then up to 63 hex digits and `-` | the transcript is counted as not read whole |
+| API call id (`message.id`), compaction id (`uuid`) | a letter or a digit, then up to 127 letters, digits, `_` and `-`; a uuid (8-4-4-4-12 lowercase hex digits) for a compaction id | the transcript is counted as not read whole |
 | Findings line | the last line of the run's report (the `message` of its last handback call, else its last text; "Key names read from a transcript"), exactly `Findings: <n> blocking, <m> nits`, each count 1 to 9 digits | the run is written with `none` in both columns; a last line that opens with `Findings:` and is none of the format is counted on stderr, and nothing of it is kept |
 | token count | a whole number from 0 to 2^53 − 1, in any form JSON writes it (`1E2`, `10.0`); written as digits | the transcript is counted as not read whole |
 
@@ -104,8 +107,9 @@ spreadsheet formula.
   call's records name the earlier session or the new one. One that the record holds is counted already: no line
   counts it again, whichever transcripts still hold it. One it does not hold belongs, of the sessions its records
   name, to the one whose records end first; the order of the ids decides only between two that end at the same
-  second. A session that ended before the start ends before any session that copied it after the start, so its
-  calls are never written through a copy.
+  second. What a copy holds of a session that ended before the start is passed over, with one timing exception: when
+  that session is resumed in place and no collection ran between the fork and the resume, the session no longer ended
+  before the start, and what the fork copied is counted in the fork's line; otherwise it is never written through a copy.
 - **The setup in force** at a time is the project's state at the newest commit of the checked out branch, not
   later than that time, that changed `.ctxm/ctxm.lock` or `.claude/agents/`. A run or a part of a session at a
   commit without `.ctxm/ctxm.lock` is counted on stderr and not written.
@@ -200,7 +204,8 @@ The collector exits 1 with one `error:` line and writes nothing when, at the fir
 a required tool is missing; the project folder is not the top of the project's main checkout (a subfolder, a
 linked worktree) or its name is no plain name; the transcripts folder is missing or holds a symbolic link on the
 way to a transcript; `ctxm/plans` or `ctxm/releases` is a symbolic link; `ctxm`, `ctxm/metrics`, `start`,
-`tasks.csv` or `counted.csv` is a symbolic link, or not a folder or a plain file; `ctxm/metrics` holds an old
+`tasks.csv` or `counted.csv` is a symbolic link, or not a folder or a plain file, or (the last two) is empty or
+larger than 16 MiB (16777216 bytes), which it never writes; `ctxm/metrics` holds an old
 file that a collector that is gone kept ("Files"). A later collection also when: a roll-up's place
 (`ctxm/metrics/<plan>.md`) is a symbolic link or no plain file; `start` holds anything but one past time;
 `tasks.csv` has a header that is none of the format's (an earlier header of it, the first 17 columns, is read, and the

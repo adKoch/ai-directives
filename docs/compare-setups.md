@@ -21,10 +21,11 @@ nothing.
   --                every argument after it is a project folder
 Exit codes:
   0  the comparison is printed on stdout (into a closed pipe: nothing, quietly)
-  1  refused or failed: one error: line on stderr and nothing on stdout; a missing tool, an argument that is
-     no project folder, a place that is a symbolic link, a file in ctxm/metrics/ that is no roll-up the collector
-     wrote, a roll-up too large or unreadable, a jq step or a write to stdout that failed
-Needs bash, jq and coreutils (dirname, basename, wc, timeout) from the caller's toolchain; LIBRARY_BUDGET_SECONDS sets
+  1  refused or failed: one error: line on stderr and nothing on stdout, but for a write to stdout that failed
+     part-way, which leaves what was written; a missing tool, an argument that is no project folder, a place that is
+     a symbolic link, a file in ctxm/metrics/ that is no roll-up the collector wrote, a roll-up too large or
+     unreadable, a jq step or a write to stdout that failed
+Needs bash, jq and coreutils (dirname, basename, wc, timeout, sleep) from the caller's toolchain; LIBRARY_BUDGET_SECONDS sets
 its time budget (300 seconds). The rules: docs/compare-setups.md of the template library.
 ```
 
@@ -57,7 +58,8 @@ with the current templates. `tasks.csv`, `start` and every other file of the fol
   owner's questions stand by plan, not by item: a roll-up counts them for the whole plan.
 - **Items**: a section per task name found in any column, each listed once, with the same columns: its rounds and
   its cost. Items are matched by their task name, so two projects that ran the same plan stand side by side item by
-  item; an item that no other column has is shown in its own column, with `none` in the others.
+  item; an item that no other column has is shown in its own column, with `none` in the others. The sections stand in
+  the order of the task names, their numbers read as numbers (`REQ-900-1A` before `REQ-900-10A`).
 - `coverage` `partial`: the project's metrics start after the plan's first commit, so what ended before the start
   is in no number of that plan; the plan is shown, never read as whole.
 - `none`: the column's plan has no line of that item. `unknown`: the roll-up has no source for the figure (the stop
@@ -78,12 +80,13 @@ from the file system before anything is read); a `.md` file's name is no plan na
 roll-ups") or its text is not what the collector writes (above). The line names the place, escaped.
 
 It also exits 1 with one `error:` line when a jq step fails (jq's own words are not shown: they may quote what it
-read), and when the text cannot be written to stdout for any reason but a closed pipe, which ends it quietly with 0.
+read), and when the text cannot be written to stdout for any reason but a closed pipe, which ends it quietly with 0 (a write
+that fails part-way leaves what it wrote).
 
 ## Tools
 The library ships no toolchain. The comparison needs `bash` (4.4 or later), `jq`, and `dirname`, `basename`, `wc`,
-`timeout` (GNU coreutils) on the `PATH`, and checks for jq, wc, timeout, dirname and basename before it reads
-anything. Tested with bash 5.3.9, jq 1.8.2 and coreutils 9.11, from context-manager's dev shell.
+`timeout`, `sleep` (GNU coreutils) on the `PATH`, and checks for jq, wc, timeout, dirname, basename and sleep
+before it reads anything. Tested with bash 5.3.9, jq 1.8.2 and coreutils 9.11, from context-manager's dev shell.
 
 ## Known limits
 - A file is checked where it stands, then read: a file swapped for a link between the two is read through the link.

@@ -107,10 +107,9 @@ rollup_facts() {
 rollup_fact() {
   local file=$1 project=$2
   # shellcheck disable=SC2016 # the $ names are jq's
-  jq --null-input --compact-output --argjson project "$project" --arg file "${file##*/}" \
-    --arg shown "$(shown "$file")" --rawfile text "$file" \
-    '{kind: "rollup", project: $project, file: $file, shown: $shown, text: $text}' 2>/dev/null \
-    || refuse_unreadable "$file"
+  comparison_jq '' '{kind: "rollup", project: $project, file: $file, shown: $shown, text: $text}' \
+    --null-input --compact-output --argjson project "$project" --arg file "${file##*/}" \
+    --arg shown "$(shown "$file")" --rawfile text "$file"
 }
 
 refuse_unreadable() {

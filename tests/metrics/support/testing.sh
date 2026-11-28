@@ -26,7 +26,7 @@ run_tests() {
   local name names
   mapfile -t names < <(declared_tests)
   ((${#names[@]} > 0)) || fail "$0 has no test_ function; no test was run"
-  make_ignored_cache_folder tests
+  make_cache_folder tests
   SCRATCH_ROOT="$(mktemp -d "$CACHE_DIR/tests/run.XXXXXX")"
   FAILED_TESTS=0
   trap 'rm -rf "$SCRATCH_ROOT"' EXIT

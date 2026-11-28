@@ -4,7 +4,7 @@
 source "$(dirname "${BASH_SOURCE[0]}")/../../../tests/metrics/support/testing.sh"
 
 # What scripts/check.sh calls before it has checked its tools, and its listed tools without shellcheck.
-readonly TOOLS_WITHOUT_SHELLCHECK=(bash dirname basename jq git timeout)
+readonly TOOLS_WITHOUT_SHELLCHECK=(bash dirname basename jq git timeout sleep)
 
 # catches: a check that lints or tests although a listed tool is missing, or whose line no longer names the tool.
 test_without_shellcheck_the_check_names_it_and_runs_nothing() {

@@ -30,11 +30,9 @@ shown_script_path() {
   printf '%s\n' "${path#"$REPO_ROOT"/}"
 }
 
-# Makes the cache's folder of that name. The cache ignores itself, so the checkout stays clean without a line in a
-# tracked file.
-make_ignored_cache_folder() {
+# Makes the cache's folder of that name; the library's .gitignore keeps the cache out of the checkout.
+make_cache_folder() {
   mkdir -p "$CACHE_DIR/$1"
-  [[ -f "$CACHE_DIR/.gitignore" ]] || printf '*\n' >"$CACHE_DIR/.gitignore"
 }
 
 # shellcheck source=tools.sh

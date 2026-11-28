@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# A stand-in for `mv` that lets the collector's first rename through and stops its second, as the file `mv-stop`
-# beside its link says:
+# A stand-in for `mv` that lets the collector's renames through and stops one, as the file `mv-stop` beside its link
+# says: `<mode> [<n>]`, the n-th call of `mv` being the one stopped (the second when n is left out):
 #   interrupt-after   makes the rename, then sends TERM to the process that called it (a stop right after it returns)
 #   interrupt-before  sends TERM and moves nothing (a stop between two renames, the later one not done)
 #   fail              moves nothing and fails, as a full disk or a read-only folder makes it fail
@@ -12,8 +12,9 @@ calls=0
 calls=$((calls + 1))
 printf '%s\n' "$calls" >"$TOOLS/mv-calls"
 PATH="${PATH#"$TOOLS:"}"
-mode="$(<"$TOOLS/mv-stop")"
-((calls == 2)) || [[ "$mode" == fail-from-then-on && calls -gt 2 ]] || exec mv "$@"
+read -r mode stopped_call <"$TOOLS/mv-stop"
+stopped_call="${stopped_call:-2}"
+((calls == stopped_call)) || [[ "$mode" == fail-from-then-on && calls -gt stopped_call ]] || exec mv "$@"
 case "$mode" in
   interrupt-after)
     mv "$@"

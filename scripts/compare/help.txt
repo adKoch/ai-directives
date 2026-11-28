@@ -9,8 +9,9 @@ nothing.
   --                every argument after it is a project folder
 Exit codes:
   0  the comparison is printed on stdout (into a closed pipe: nothing, quietly)
-  1  refused or failed: one error: line on stderr and nothing on stdout; a missing tool, an argument that is
-     no project folder, a place that is a symbolic link, a file in ctxm/metrics/ that is no roll-up the collector
-     wrote, a roll-up too large or unreadable, a jq step or a write to stdout that failed
-Needs bash, jq and coreutils (dirname, basename, wc, timeout) from the caller's toolchain; LIBRARY_BUDGET_SECONDS sets
+  1  refused or failed: one error: line on stderr and nothing on stdout, but for a write to stdout that failed
+     part-way, which leaves what was written; a missing tool, an argument that is no project folder, a place that is
+     a symbolic link, a file in ctxm/metrics/ that is no roll-up the collector wrote, a roll-up too large or
+     unreadable, a jq step or a write to stdout that failed
+Needs bash, jq and coreutils (dirname, basename, wc, timeout, sleep) from the caller's toolchain; LIBRARY_BUDGET_SECONDS sets
 its time budget (300 seconds). The rules: docs/compare-setups.md of the template library.

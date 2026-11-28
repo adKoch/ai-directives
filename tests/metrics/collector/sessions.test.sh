@@ -114,6 +114,7 @@ test_a_part_not_written_before_a_part_that_is_is_passed_over_for_good() {
   transcripts session-across-template-update
   collected
   collected
+  # The 1 is the run of the shape, noted on every collection; the passed part would make it 2.
   assert_prints 'note: runs and parts of main sessions at a commit without .ctxm/, not written: 1' cat stderr
   assert_prints 2 grep --count '^none,call,' "$METRICS/counted.csv"
 }

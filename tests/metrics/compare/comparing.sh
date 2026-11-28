@@ -91,7 +91,7 @@ note_what_was_there() {
   checkout_state >checkout-before
 }
 
-# Prints the row of the figure in the section under the heading (`Plan <plan>`, `Item <task>`, `Setups`) of what
+# Prints the row of the figure in the section under the heading (`Plans`, `Item <task>`, `Setups`) of what
 # the comparison printed.
 figure_row() {
   local heading=$1 figure=$2 line section=''
@@ -139,4 +139,10 @@ assert_nothing_written() {
   assert_prints "$before" files_state
   before="$(<checkout-before)"
   assert_prints "$before" checkout_state
+}
+
+# Ends the test that calls it, as passed with a note, when the tests run as root: root reads a file whatever its mode,
+# so a test that locks a file would fail for no fault of the comparison.
+skip_when_run_as_root() {
+  ((EUID != 0)) || { printf 'skipped: run as root, which no file mode stops\n'; exit 0; }
 }

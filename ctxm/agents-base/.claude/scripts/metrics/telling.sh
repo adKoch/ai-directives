@@ -28,8 +28,7 @@ tell() {
 # could not be put back comes first, as it needs a person.
 tell_stop() {
   if ((${#UNRESTORED_PLACES[@]} > 0)); then
-    printf 'error: the collection stopped and could not put back %s; %s\n' "$(unrestored_list)" \
-      'move each old file over its file; the next collection refuses while one is left' >&2
+    tell_unrestored
   elif (($1 == INTERRUPTED_STATUS)); then
     printf 'error: the collection was interrupted; ctxm/metrics/ holds no half-written file\n' >&2
   elif (($1 != REFUSED_STATUS)); then
@@ -49,4 +48,20 @@ unrestored_list() {
     fi
   done
   comma_separated "${items[@]}"
+}
+
+# Prints the error line of a stop that could not put back every file. The next collection refuses only while an old
+# file is left; a place that was new has none, and its line says what to remove.
+tell_unrestored() {
+  local advice=''
+  ! an_old_file_is_kept || advice="; move each old file over its file; the next collection refuses while one is left"
+  printf 'error: the collection stopped and could not put back %s%s\n' "$(unrestored_list)" "$advice" >&2
+}
+
+an_old_file_is_kept() {
+  local place
+  for place in "${UNRESTORED_PLACES[@]}"; do
+    [[ ! -e "$(kept_name "$place")" ]] || return 0
+  done
+  return 1
 }

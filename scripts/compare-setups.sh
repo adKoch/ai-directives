@@ -7,7 +7,7 @@
 # collector's roll-up format by compare/program.sh.
 # shellcheck source=lib/common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
-require_tools jq wc timeout dirname basename
+require_tools jq wc timeout dirname basename sleep
 ensure_budget "$@"
 # shellcheck source=compare/program.sh
 source "$REPO_ROOT/scripts/compare/program.sh"
@@ -97,7 +97,7 @@ print_result() {
   trap '' PIPE
   { failure="$(printf '%s\n' "$1" 2>&1 >&3)"; } 3>&1 || true
   [[ -z "$failure" || "$failure" == *'Broken pipe' ]] \
-    || die "the comparison could not be written to stdout; give it a place to write that takes the whole text"
+    || die "the text could not be written to stdout; give it a place to write that takes the whole text"
 }
 
 main "$@"

@@ -38,10 +38,10 @@ def is_model: matches("[A-Za-z0-9][A-Za-z0-9._:\\[\\]-]{0,79}") and (is_fixed_wo
 def is_effort: matches("[a-z][a-z0-9-]{0,19}") and (is_fixed_word | not);
 def is_session_id: matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
 def is_agent_id: matches("[0-9a-z]{1,64}") and (is_fixed_word | not);
-# An API call's id (its message id) and a compaction's id (its record's uuid). The record of what the lines counted
-# holds them (counted.jq), so each starts with a letter or a digit, as every field does.
+# An API call's id (its message id) and a compaction's id (its record's uuid, the shape of a session id). The record of
+# what the lines counted holds them (counted.jq), so each starts with a letter or a digit, as every field does.
 def is_call_id: matches("[A-Za-z0-9][A-Za-z0-9_-]{0,127}");
-def is_record_id: matches("[0-9a-f][0-9a-f-]{0,63}");
+def is_record_id: is_session_id;
 def is_project_name: matches("[A-Za-z0-9][A-Za-z0-9._-]{0,63}") and (is_fixed_word | not);
 def is_template_name: matches("[a-z0-9][a-z0-9-]{0,63}");
 def is_library_commit: matches("[0-9a-f]{40}([0-9a-f]{24})?");

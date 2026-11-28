@@ -108,6 +108,8 @@ To read another format as well:
 3. Its text: a row or a bullet in `rollup_text.jq`. Every value passes `field_text`; a value that is not a number, a
    fixed word or a checked name stops the collection.
 4. A test in `../rollup/figures.test.sh` that compares the figure with the sum of the lines it names.
+5. The comparison reads the roll-up too, and refuses a roll-up whose figures it does not know: change it as
+   "Adding a figure" says (`../compare/README.md`).
 
 ## Adding a kind of event the record holds
 The record (`counted.csv`) holds every event of a main session's line, by kind and id, so that whether it was

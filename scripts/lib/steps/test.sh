@@ -12,7 +12,7 @@ readonly REPORT_FILE="$CACHE_DIR/check/tests-run"
 main() {
   local file tests=0 failed=0
   require_test_files
-  make_ignored_cache_folder check
+  make_cache_folder check
   for file in "${TEST_FILES[@]}"; do
     printf '%s\n' "$file"
     if run_test_file "$REPO_ROOT/$file" "$REPORT_FILE"; then

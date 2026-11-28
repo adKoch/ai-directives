@@ -37,6 +37,8 @@ source "$METRICS_SCRIPTS/transcripts.sh"
 source "$METRICS_SCRIPTS/plans.sh"
 # shellcheck source=metrics/store.sh
 source "$METRICS_SCRIPTS/store.sh"
+# shellcheck source=metrics/leftovers.sh
+source "$METRICS_SCRIPTS/leftovers.sh"
 # shellcheck source=metrics/telling.sh
 source "$METRICS_SCRIPTS/telling.sh"
 
@@ -49,17 +51,18 @@ TRANSCRIPTS_FOLDER=''
 
 main() {
   trap end_collector EXIT
+  trap 'exit "$INTERRUPTED_STATUS"' TERM INT HUP
   require_tools
   shopt -s inherit_errexit
   read_arguments "$@"
   forget_inherited_repository
   find_project "$PROJECT_FOLDER"
   refuse_unsafe_store
+  refuse_unfit_lines_files
   refuse_unsettled_files
   refuse_linked_sources
   find_transcripts
   name_project
-  trap 'exit "$INTERRUPTED_STATUS"' TERM INT HUP
   if has_stored "$START_FILE"; then
     collect
   else
