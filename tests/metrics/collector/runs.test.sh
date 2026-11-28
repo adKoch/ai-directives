@@ -133,7 +133,9 @@ test_a_setup_the_collector_cannot_read_after_a_fine_one_is_still_refused() {
   assert_prints "error: the setup at commit $commit: an agent file of .claude/agents/ names an effort that is no plain\
  word; fix it in a new commit: what ran under this one is then counted on stderr, not written; nothing was written" \
     cat stderr
-  assert_prints start ls "$METRICS"
+  assert_prints '' cat stdout
+  assert_prints '?? ctxm/metrics/start' written_files
+  assert_prints start metrics_files
 }
 
 run_tests

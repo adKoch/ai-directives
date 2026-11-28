@@ -215,7 +215,8 @@ linked worktree) or its name is no plain name; the transcripts folder is missing
 way to a transcript; `ctxm/plans` or `ctxm/releases` is a symbolic link; `ctxm`, `ctxm/metrics`, `start`,
 `tasks.csv` or `counted.csv` is a symbolic link, or not a folder or a plain file, or larger than the collector reads
 (`start` 64 bytes, the other two 16 MiB, 16777216 bytes); `ctxm/metrics` holds an old file that a collector that is
-gone kept ("Files"). A collection that writes (a dry run does not) also when the collector may not write in
+gone kept ("Files"). A collection that has a file to write (a dry run has none; a later collection that adds no
+line and has no roll-up writes nothing and passes) also when the collector may not write in
 `ctxm/metrics/` (before it is there, in `ctxm/` or the project folder), or a folder stands under the name this
 collector would prepare or keep one of its files under (`<file>.new.<process id>` or `<file>.old.<process id>`). A
 later collection also when: `tasks.csv` or `counted.csv` is empty (0 bytes) while the other is not, which the

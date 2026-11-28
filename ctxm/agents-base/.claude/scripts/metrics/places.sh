@@ -2,8 +2,9 @@
 # The checks of the places the collector reads and writes in ctxm/metrics/ (store.sh), each ending the collector with
 # its one refusal before any file is replaced: what stands there, how large it is, whether the collector may write
 # there. A check here never changes a file.
-# Sourced by collect-metrics.sh after store.sh; needs PROJECT (project.sh), refuse (tools.sh), and has_stored,
-# prepared_name and kept_name (store.sh).
+# Sourced by collect-metrics.sh after store.sh; needs PROJECT (project.sh), refuse (tools.sh), and from store.sh the
+# places METRICS_FOLDER, START_FILE, TASKS_FILE and COUNTED_FILE and the functions has_stored, prepared_name and
+# kept_name.
 
 # tasks.csv and its record are read whole, so a larger file is refused: both are committed files another tool or a
 # person may edit.

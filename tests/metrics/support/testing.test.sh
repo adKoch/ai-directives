@@ -49,21 +49,41 @@ TEST_FILE
   assert_prints '2 1' cat report
 }
 
-# catches: a skip read back from what a test prints: a test that prints a line like a skip's shown as skipped, and a
-# skip inside `$(…)` that ends only the substitution while the test goes on and passes.
+# catches: a skip read back from what a test prints: a test that prints a line like a skip's shown as skipped; and a
+# skip inside `$(…)` or a pipeline that ends only that part while the test goes on and passes, also where the test
+# masks the part's status.
 test_only_skip_test_itself_marks_a_test_skipped_and_never_from_inside_a_substitution() {
   local status=0 misuse="skip_test ends only the test itself: call it outside \$(…) and pipelines"
-  cat >skipping.test.sh <<TEST_FILE
-source "$SUPPORT/testing.sh"
-test_a_test_that_prints_a_line_like_a_skip() { printf 'skipped: synthetic reason\n'; }
-test_a_test_that_skips_inside_a_substitution() { local reason; reason="\$(skip_test "synthetic reason")"; }
-run_tests
-TEST_FILE
+  write_test_file_of_misplaced_skips skipping.test.sh
   bash skipping.test.sh >output 2>&1 || status=$?
   assert_equal "$status" 1
   assert_prints '["  ok      a test that prints a line like a skip",'\
-'"  FAILED  a test that skips inside a substitution"]' result_lines output
-  assert_prints "$misuse" grep '^skip_test' output
+'"  FAILED  a test that skips inside a masked substitution","  FAILED  a test that skips inside a pipeline",'\
+'"  FAILED  a test that skips inside a substitution","  FAILED  a test that skips where its status is ignored"]' \
+    result_lines output
+  assert_prints "$misuse" uniq_lines_starting_skip_test output
+}
+
+# Writes a test file whose tests print a line like a skip's, or call skip_test inside a substitution or a pipeline:
+# assigned, masked by `local`, ignored by `|| true`, and piped.
+write_test_file_of_misplaced_skips() {
+  cat >"$1" <<TEST_FILE
+source "$SUPPORT/testing.sh"
+test_a_test_that_prints_a_line_like_a_skip() { printf 'skipped: synthetic reason\n'; }
+test_a_test_that_skips_inside_a_substitution() { local reason; reason="\$(skip_test "synthetic reason")"; }
+test_a_test_that_skips_inside_a_masked_substitution() { local reason="\$(skip_test "synthetic reason")"; }
+test_a_test_that_skips_where_its_status_is_ignored() { printf '%s' "\$(skip_test "synthetic reason")" || true; }
+test_a_test_that_skips_inside_a_pipeline() { skip_test "synthetic reason" | cat; }
+run_tests
+TEST_FILE
+}
+
+# Prints the lines of the file that start with `skip_test`, each once, and fails unless there are 4.
+uniq_lines_starting_skip_test() {
+  local count
+  count="$(grep --count '^skip_test' "$1")"
+  ((count == 4)) || fail "expected 4 misuse lines, found $count"
+  grep '^skip_test' "$1" | sort -u
 }
 
 run_tests

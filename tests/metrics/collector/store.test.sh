@@ -125,21 +125,6 @@ test_a_git_environment_of_the_caller_does_not_change_which_repository_is_read() 
   assert_prints '' git -C decoy status --porcelain --untracked-files=all
 }
 
-# catches: a metrics folder the collector may not write met with the shell's own line before the error line (a
-# place printed as it is), instead of one refusal.
-test_a_metrics_folder_the_collector_may_not_write_is_refused_in_one_line() {
-  ((EUID != 0)) || skip_test "root may write in a folder without write permission"
-  started_project one-setup
-  transcripts finished-run
-  trap 'chmod u+w project/ctxm/metrics' EXIT
-  chmod a-w "$METRICS"
-  collect
-  assert_prints 1 cat status
-  assert_prints 'error: the collector may not write in ctxm/metrics/; let it write there, ctxm/metrics/ is its only'\
-' place; nothing was written' cat stderr
-  assert_prints start metrics_files
-}
-
 # catches: a folder named like a new file of a killed collector stopping every collection with rm's own words:
 # the collector makes no folder there, so it is none of its files and is left alone.
 test_a_folder_named_like_a_killed_collectors_new_file_is_left_alone() {

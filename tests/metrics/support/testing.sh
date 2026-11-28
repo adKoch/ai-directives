@@ -50,12 +50,13 @@ declared_tests() {
 
 # Adds a failed test to FAILED_TESTS, a skipped one to SKIPPED_TESTS. The test is a command of its own, in no `||` or
 # `if`, and so is every call on the way to it: only so does errexit hold inside the test. Beside its folder it leaves
-# its output (`<folder>.output`) and, when it skipped, its reason (`<folder>.skipped`, skip_test): a channel of the
-# skip's own, so no line the test prints is taken for one.
+# its output (`<folder>.output`), when it skipped its reason (`<folder>.skipped`), and when it called skip_test where
+# that cannot end it, a mark (`<folder>.misused`, skip_test): channels of their own, so no line the test prints, and
+# no status a test masks, decides how it ended.
 run_test() {
   local name=$1 folder="$SCRATCH_ROOT/$1" status outcome
   mkdir "$folder"
-  SKIP_REASON_FILE="$folder.skipped"
+  SKIP_REASON_FILE="$folder.skipped" SKIP_MISUSE_FILE="$folder.misused"
   set +e
   (
     set -e
@@ -64,7 +65,7 @@ run_test() {
   ) >"$folder.output" 2>&1
   status=$?
   set -e
-  outcome="$(outcome_of "$status" "$folder.skipped")"
+  outcome="$(outcome_of "$status" "$folder")"
   count_outcome "$outcome"
   print_outcome "$name" "$outcome" "$folder"
 }
@@ -76,11 +77,11 @@ enter_test_shell() {
   cd "$1"
 }
 
-# Prints how a test ended, from its status and whether it left a skip reason: ok, skipped (skip_test) or FAILED.
+# Prints how a test ended, from its status and the files it left beside its folder: ok, skipped (skip_test) or FAILED.
 outcome_of() {
-  if (($1 != 0)); then
+  if (($1 != 0)) || [[ -f "$2.misused" ]]; then
     printf 'FAILED\n'
-  elif [[ -f "$2" ]]; then
+  elif [[ -f "$2.skipped" ]]; then
     printf 'skipped\n'
   else
     printf 'ok\n'
@@ -114,10 +115,11 @@ report_tests_run() {
 
 # Ends the test that calls it as passed, and has the run show it as skipped, with the reason: for a test that cannot
 # check what it is for where it runs. Called inside `$(…)` or a pipeline it could end only that part, and the test
-# would go on: there it fails the test instead.
+# would go on, its status perhaps masked (`local x="$(…)"`, `|| true`): there it marks the test failed instead.
 skip_test() {
   if ((BASHPID != TEST_SHELL)); then
     printf "skip_test ends only the test itself: call it outside \$(…) and pipelines\n" >&2
+    : >"$SKIP_MISUSE_FILE"
     exit 1
   fi
   printf '%s\n' "$*" >"$SKIP_REASON_FILE"

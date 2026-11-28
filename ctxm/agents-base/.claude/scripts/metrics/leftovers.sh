@@ -9,7 +9,8 @@
 
 # Removes the new files a killed collector left, when that process is gone; the files of a collector that still runs
 # are never touched, nor any old file kept (refuse_unsettled_files), nor a folder: the collector makes none there, so
-# a folder of such a name is none of its files. Called once per write (begin_write), before its first file is prepared.
+# a folder of such a name is none of its files. Called once per collection that is no dry run, before its first file
+# is prepared.
 remove_abandoned_files() {
   local names name path
   names="$(left_by_gone_collectors new)"

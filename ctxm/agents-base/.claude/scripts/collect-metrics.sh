@@ -136,6 +136,7 @@ collect() {
 
 # Writes the added lines, their record and the roll-ups together, all or nothing (store.sh): every place is checked
 # and every file prepared before the first is renamed, and a stop before the last rename puts the old files back.
+# Whether the collector may write is checked only when there is something to write.
 # tasks.csv is renamed last, just after its record: a kill that cuts the renames off (no trap runs) leaves it old,
 # and its record new: the old files the kill left stop every collection until a person moves them back (store.sh).
 store_collection() {
@@ -144,7 +145,8 @@ store_collection() {
   for ((index = 0; index < count; index++)); do
     refuse_unsafe_rollup "$(plan_part ".rollups[$index].plan" "$plan")"
   done
-  begin_write
+  [[ "$(plan_part '(.rollups | length) > 0 or .counted != null' "$plan")" != true ]] || refuse_unwritable_store
+  remove_abandoned_files
   for ((index = 0; index < count; index++)); do
     name="$(plan_part ".rollups[$index].plan" "$plan")"
     prepare_file "$METRICS_FOLDER/$name.md" "$(plan_part ".rollups[$index].content" "$plan")"
