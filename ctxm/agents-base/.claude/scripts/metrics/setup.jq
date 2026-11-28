@@ -84,6 +84,7 @@ def version_template:
 
 def applied_template($format):
   if .name | is_template_name | not then lock_problem("names a template or a library commit that is none")
+  elif .name | is_short_template_name | not then lock_problem("names a template longer than 255 bytes")
   elif .name | is_fingerprint_name | not then
     lock_problem("names a template the fingerprint cannot hold: only letters, digits, `.`, `-` and `/`")
   elif .source | is_template_source | not then lock_problem("names a template without a source")

@@ -49,6 +49,9 @@ def is_template_name:
   type == "string" and (explode | any(. < 32 or . == 127 or . == 92) | not) and (test("\\A[A-Za-z]:") | not)
   and (split("/") | all(. != "" and . != "." and . != ".." and (endswith(".") or endswith(" ") | not)
     and ascii_downcase != ".git"));
+# ctxm sets no limit on a template's name, but every line of tasks.csv under its setup copies it: 255 bytes, a file
+# name's limit on most file systems, holds any name a library is likely to give.
+def is_short_template_name: utf8bytelength <= 255;
 # A name the fingerprint can hold: a field of tasks.csv, without `@` and `+`, the marks between its parts.
 def is_fingerprint_name: matches("[A-Za-z0-9][A-Za-z0-9./-]*");
 # Lock format 8, as ctxm checks it (is_commit_id, is_full_commit_id): a commit pin names 4 to 40 hex digits, a release
