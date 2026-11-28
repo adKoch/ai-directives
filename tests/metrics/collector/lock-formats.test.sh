@@ -130,4 +130,36 @@ test_a_template_name_that_is_none_is_refused_and_nothing_is_written() {
   done
 }
 
+# catches: a part of ctxm's name check (a control character, a drive letter, a bare `..`, an empty last part) lost,
+# so the name is accepted or refused only by the fingerprint's check, with a message that blames the wrong rule.
+test_every_rule_of_the_ctxm_name_check_refuses_the_name_and_nothing_is_written() {
+  local name tab=$'\t'
+  for name in C:x .. a/; do
+    collect_with_lock 8 '[{"name": "'"$name"'", "commit": "'"$COMMIT_ONE"'"}]'
+    assert_refused_for_the_lock "names a template or a library commit that is none"
+  done
+  collect_with_lock_text "version = 8
+folders = [\".claude/agents\"]
+
+[[templates]]
+name = \"a${tab}b\"
+source = \"local\"
+commit = \"$COMMIT_ONE\"
+"
+  assert_refused_for_the_lock "names a template or a library commit that is none"
+}
+
+# catches: a template name of any length copied into every line of tasks.csv under its setup, or one cut by
+# characters where the cap counts bytes.
+test_a_template_name_longer_than_255_bytes_is_refused_and_nothing_is_written() {
+  local name
+  name="$(printf 'a%.0s' {1..255})"
+  collect_with_lock 8 '[{"name": "'"$name"'", "commit": "'"$COMMIT_ONE"'"}]'
+  assert_prints "$name@$COMMIT_ONE" line_fields a0000000000000001 templates
+  for name in "${name}a" "$(printf 'é%.0s' {1..128})"; do
+    collect_with_lock 8 '[{"name": "'"$name"'", "commit": "'"$COMMIT_ONE"'"}]'
+    assert_refused_for_the_lock "names a template longer than 255 bytes"
+  done
+}
+
 run_tests

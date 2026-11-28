@@ -88,6 +88,35 @@ test_a_multi_line_string_in_a_table_not_read_is_skipped_whole() {
   done
 }
 
+# catches: a multi-line string opened in the `folders` line taken for a list on one line, so a fake [[templates]]
+# table inside it, up to a comment line that closes it, is read as a template that was never applied.
+test_a_multi_line_string_in_the_folders_line_is_refused_and_nothing_is_written() {
+  collect_with_lock_text "version = 8
+folders = [\"\"\"]
+
+[[templates]]
+name = \"docs\"
+source = \"local\"
+commit = \"$COMMIT_TWO\"
+# \"\"\"]
+
+[[templates]]
+name = \"coding\"
+source = \"local\"
+commit = \"$COMMIT_ONE\"
+"
+  assert_refused_for_the_lock "$UNREAD_LINE"
+}
+
+# catches: `\"""` in a `"""` string of a table not read taken for its close, so a fake [[templates]] table inside the
+# string, up to a comment line that closes it, is read as a template that was never applied.
+test_an_escaped_quote_before_three_quotes_closes_no_string() {
+  collect_with_lock 8 '[{"name": "coding", "commit": "'"$COMMIT_ONE"'"}]' '{"end_lines": '"$(json_lines '[values]' \
+    'x = """a\"""' '[[templates]]' 'name = "docs"' 'source = "local"' "commit = \"$COMMIT_TWO\"" '# """')"'}'
+  assert_prints 0 cat status
+  assert_prints "coding@$COMMIT_ONE" line_fields a0000000000000001 templates
+}
+
 # catches: a multi-line string where ctxm writes none (before the tables, in a template) or one never closed, and a
 # one-line string never closed, read past: the lines after it read as headers and keys they are not.
 test_a_string_ctxm_does_not_write_is_refused_and_nothing_is_written() {

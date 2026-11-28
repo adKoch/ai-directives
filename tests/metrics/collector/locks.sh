@@ -25,6 +25,11 @@ project_with_lock_file() {
   project_with_lock_of "$(jq --null-input --compact-output --rawfile text "$1" '{text: $text}')"
 }
 
+# Builds ./project from one commit holding the lock text given, as it stands (a hand-edited lock no history renders).
+project_with_lock_text() {
+  project_with_lock_of "$(jq --null-input --compact-output --arg text "$1" '{text: $text}')"
+}
+
 # Builds ./project from one commit holding the lock the JSON object describes (tests/metrics/support/project.jq).
 project_with_lock_of() {
   mkdir -p histories
@@ -38,16 +43,23 @@ project_with_lock_of() {
 
 # Collects a project whose lock is built as project_with_lock builds it, from a finished run, in a clean folder.
 collect_with_lock() {
-  rm -rf project transcripts "$METRICS"
-  project_with_lock "$@"
-  transcripts finished-run
-  collect
+  collect_project_built_by project_with_lock "$@"
 }
 
 # Collects a project whose lock is the file given, as collect_with_lock does.
 collect_with_lock_file() {
+  collect_project_built_by project_with_lock_file "$1"
+}
+
+# Collects a project whose lock is the text given, as collect_with_lock does.
+collect_with_lock_text() {
+  collect_project_built_by project_with_lock_text "$1"
+}
+
+# Collects the project the command given builds (one of the project_with_lock functions), in a clean folder.
+collect_project_built_by() {
   rm -rf project transcripts "$METRICS"
-  project_with_lock_file "$1"
+  "$@"
   transcripts finished-run
   collect
 }
