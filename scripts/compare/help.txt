@@ -13,5 +13,5 @@ Exit codes:
      part-way, which leaves what was written; a missing tool, an argument that is no project folder, a place that is
      a symbolic link, a file in ctxm/metrics/ that is no roll-up the collector wrote, a roll-up too large or
      unreadable, a jq step or a write to stdout that failed
-Needs bash, jq and coreutils (dirname, basename, wc, timeout, sleep) from the caller's toolchain; LIBRARY_BUDGET_SECONDS sets
-its time budget (300 seconds). The rules: docs/compare-setups.md of the template library.
+Needs bash, jq and coreutils (dirname, basename, wc, timeout, sleep) from the caller's toolchain;
+LIBRARY_BUDGET_SECONDS sets its time budget (300 seconds). The rules: docs/compare-setups.md of the template library.

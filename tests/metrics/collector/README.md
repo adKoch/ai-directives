@@ -58,8 +58,8 @@ reads the library's history.
 
 Test files: `runs.test.sh` (run lines), `sessions.test.sh` (main's lines, copies), `copies.test.sh` (copies,
 chains and deletions: each call once, in both id orders), `record.test.sh` (the record's refusals and its
-write), `start.test.sh` (the start), `refusals.test.sh` (what stops a collection), `text.test.sh` (no text gets
-out), `format.test.sh` (the page, the headers and an earlier header), `store.test.sh` (the collector's own working
+write), `empty-files.test.sh` (an empty `tasks.csv` or record, refused only beside a full one), `start.test.sh`
+(the start), `refusals.test.sh` (what stops a collection), `text.test.sh` (no text gets out), `format.test.sh` (the page, the headers and an earlier header), `store.test.sh` (the collector's own working
 files, its tools and its environment). The roll-up tests are in `../rollup/`: `figures.test.sh` (the
 figures), `refusals.test.sh` (what a roll-up refuses or leaves out) and `writing.test.sh` (roll-ups and lines all
 or nothing); `rolling.sh` adds plans and commits to a project and looks for its shapes and histories in its own

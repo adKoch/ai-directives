@@ -52,12 +52,16 @@ require_assertions_run_their_commands() {
     "use assert_prints <expected> <command> (tests/metrics/support/testing.sh)"
 }
 
-# Ends the step naming each file given that holds a hidden character; none given is a step that checked nothing.
+# Ends the step naming each file given whose name or content holds a hidden character (scripts/lib/characters.jq
+# says which); none given is a step that checked nothing.
 require_no_hidden_characters() {
   local found
   (($# > 0)) || die "no file of the library found to check for hidden characters"
+  found="$(names_with_hidden_characters "$@")"
+  [[ -z "$found" ]] || die "hidden characters (scripts/lib/characters.jq) in the names of: ${found//$'\n'/ };" \
+    "rename them"
   found="$(files_with_hidden_characters "$@")"
-  [[ -z "$found" ]] || die "hidden characters (control, zero-width or bidi) in: ${found//$'\n'/ }; remove them"
+  [[ -z "$found" ]] || die "hidden characters (scripts/lib/characters.jq) in: ${found//$'\n'/ }; remove them"
 }
 
 main

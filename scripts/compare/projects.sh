@@ -49,15 +49,25 @@ refuse_unsafe_project() {
   refuse_unsettled_metrics "$metrics"
 }
 
-# A file an interrupted collection kept (docs/metrics-format.md, Files) means the roll-ups may be a mix of two.
+# An old file an interrupted collection kept of its own (docs/metrics-format.md, Files) means the roll-ups may be a
+# mix of two. A file of the folder named like one but of no file the collector writes is none.
 refuse_unsettled_metrics() {
-  local kept=()
-  shopt -s nullglob dotglob
-  kept=("$1"/*.old.[0-9]*)
-  shopt -u nullglob dotglob
-  ((${#kept[@]} == 0)) || refuse_place "${kept[0]}" "is a file an interrupted collection kept, so the roll-ups" \
+  local kept
+  kept="$(kept_old_names "$1")"
+  [[ -z "$kept" ]] || refuse_place "$1/${kept%%$'\n'*}" "is a file an interrupted collection kept, so the roll-ups" \
     "may be a mix; settle it as docs/metrics-format.md (Files) says"
 }
+
+# Prints the name of each old file of the folder that a collection kept of its own (the collector's format.jq:
+# is_leftover_name), in byte order whatever the caller's locale.
+kept_old_names() (
+  local LC_ALL=C paths=()
+  shopt -s nullglob
+  paths=("$1"/*.old.*)
+  ((${#paths[@]} > 0)) || return 0
+  printf '%s\0' "${paths[@]##*/}" | comparison_jq collector/format \
+    'split("\u0000")[:-1][] | select(is_leftover_name("old"))' --raw-input --slurp --raw-output
+)
 
 # Adds the roll-up files of the project to ROLLUP_FILES: every .md file of its ctxm/metrics/, each a plain file
 # within the limit. Its name is checked by the rules, which refuse a file that is no roll-up.

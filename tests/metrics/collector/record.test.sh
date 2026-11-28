@@ -162,9 +162,9 @@ tasks.csv' metrics_files
   printf 'old bytes\n' >"$RECORD.old.$dead"
   keep_metrics
   collect
-  assert_refused_unchanged "ctxm/metrics/ holds 1 old file(s) a stopped collection kept, the first counted.csv.old.$dead;" \
-    'move each over its file (the name without .old.<process id>), or remove it once its file is right;' \
-    'nothing was written'
+  assert_refused_unchanged "ctxm/metrics/ holds 1 old file(s) a stopped collection kept, the first" \
+    "counted.csv.old.$dead; move each over its file (the name without .old.<process id>), or remove it once its" \
+    'file is right; nothing was written'
 }
 
 # catches: an empty tasks.csv or record refused as a missing one ("is there without"), or a file of any size read whole
@@ -176,7 +176,7 @@ test_an_empty_or_too_large_lines_file_or_record_is_refused_naming_it() {
     : >"$METRICS/$file"
     refuse_the_file_as_it_stands "$file" "is empty (0 bytes); $RESTORE_RECORD"
     head --bytes=16777217 /dev/zero | tr '\0' x >"$METRICS/$file"
-    refuse_the_file_as_it_stands "$file" "is larger than the collector reads (16777216 bytes); nothing was written"
+    refuse_the_file_as_it_stands "$file" "is larger than the collector reads (16777216 bytes); $RESTORE_RECORD"
     rm -rf project transcripts
     collected_project
   done

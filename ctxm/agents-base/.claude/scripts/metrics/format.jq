@@ -49,6 +49,16 @@ def is_library_commit: matches("[0-9a-f]{40}([0-9a-f]{24})?");
 # `_` or `-`, so the name holds no `..`, no `/` and no leading dot.
 def is_plan_name: matches("[A-Za-z0-9]+([._-][A-Za-z0-9]+){0,15}") and length <= 64;
 
+# The files of ctxm/metrics/ the collector writes: the start record, tasks.csv, its record and a plan's roll-up.
+def is_own_file_name:
+  . == "start" or . == "tasks.csv" or . == "counted.csv" or (endswith(".md") and (.[:-3] | is_plan_name));
+
+# A second name the collector gives an own file while it writes it (store.sh), `<own file>.<kind>.<process id>`, of
+# the kind given (`new` or `old`); the process id as the system gives one, never 0.
+def is_leftover_name($kind):
+  (capture("\\A(?<file>.+)\\.(?<kind>[a-z]+)\\.(?<process>[1-9][0-9]{0,9})\\z") // null) as $parts
+  | $parts != null and $parts.kind == $kind and ($parts.file | is_own_file_name);
+
 # A time in ctxm/metrics/: UTC, to the second.
 def is_time:
   matches("[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z")

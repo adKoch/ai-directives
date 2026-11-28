@@ -54,27 +54,38 @@ tasks.csv
 tasks.csv.new.$alive" metrics_files
 }
 
-# catches: foreign files of ctxm/metrics/ named like the collector's working files taken for them: a file of another tool
-# removed as an abandoned one, or its name stopping every collection for good, while the collector's own old file still
-# stops it.
+# catches: foreign files of ctxm/metrics/ named like the collector's working files taken for them: a file of another
+# tool removed as an abandoned one, or its name stopping every collection for good, while the collector's own old
+# file still stops it.
 test_a_file_that_is_none_of_the_collectors_is_neither_removed_nor_a_reason_to_refuse() {
-  local dead
+  local dead name
   started_project one-setup
   transcripts finished-run
   sleep 0 &
   dead=$!
   wait "$dead"
-  printf 'x\n' >"$METRICS/notes.txt.old.$dead"
-  printf 'x\n' >"$METRICS/notes.txt.new.$dead"
+  for name in "notes.txt.old.$dead" "notes.txt.new.$dead" "a..md.old.$dead" tasks.csv.old.0; do
+    printf 'x\n' >"$METRICS/$name"
+  done
   collected
-  assert_prints "counted.csv
+  assert_prints "a..md.old.$dead
+counted.csv
 notes.txt.new.$dead
 notes.txt.old.$dead
 start
-tasks.csv" metrics_files
+tasks.csv
+tasks.csv.old.0" metrics_files
   printf 'x\n' >"$METRICS/tasks.csv.old.$dead"
+  metrics_files >before.list
+  cp "$METRICS/tasks.csv" lines.csv
   collect
   assert_prints 1 cat status
+  assert_prints "error: ctxm/metrics/ holds 1 old file(s) a stopped collection kept, the first tasks.csv.old.$dead;\
+ move each over its file (the name without .old.<process id>), or remove it once its file is right; nothing was\
+ written" cat stderr
+  metrics_files >after.list
+  assert_same_content after.list before.list
+  assert_same_content "$METRICS/tasks.csv" lines.csv
 }
 
 # Runs the collector with a git that stalls, sends it TERM once git waits, and lets git go; ./status and ./stderr are

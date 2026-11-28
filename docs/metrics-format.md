@@ -23,16 +23,18 @@ the collector: it ends with 0. If putting a file back fails too, that file's old
 
 A collection never removes an old file another collector kept: while the folder holds a `<file>.old.<process id>`
 of a process that is gone, where `<file>` is one of the collector's own (`start`, `tasks.csv`, `counted.csv` or
-`<plan>.md`), every collection (a dry run too) is refused, and a person settles each file; the `error:` line names the
-first and counts all. Two cases leave one. A failed put-back of a place that had a file: move the old file over
-its file (a place that was new has none: remove its new file, as the line says). A kill no program can catch
-(`SIGKILL`, a power cut) between two renames: each file renamed before it is new, with its old file beside it, and the
-others are old. Move each old file back over its file (the record's at least: a record ahead of `tasks.csv` is refused as out
-of step); the next collection then finds the lines `tasks.csv` lacks again and rewrites every roll-up from them,
-so the mix heals. A file of the folder that is none of these (another setup's roll-up, written
-by its own importer, or a file named like an old file that is none of the collector's own) is never read, changed or
-removed. The only files the next collection removes are the new files a killed collector left
-(`<own file>.new.<process id>`, the process gone). The files hold numbers, times, ids, the fixed words and names that fit the patterns below: no prompt, file or report text.
+`<plan>.md`), every collection (a dry run too) is refused, and a person settles each file; the `error:` line names
+the first in byte order and counts all. The comparison (`docs/compare-setups.md`) refuses such a file too, of a
+process gone or not. Two cases leave one. A failed put-back of a place that had a file: move the old file over its
+file (a place that was new has none: remove its new file, as the line says). A kill no program can catch
+(`SIGKILL`, a power cut) between two renames: each file renamed before it is new, with its old file beside it, and
+the others are old. Move each old file back over its file (the record's at least: a record ahead of `tasks.csv` is
+refused as out of step); the next collection then finds the lines `tasks.csv` lacks again and rewrites every
+roll-up from them, so the mix heals. A file of the folder that is none of these (another setup's roll-up, written
+by its own importer, or a file named like an old or a new file that is none of the collector's own) is never read,
+changed or removed. The only files the next collection removes are the new files a killed collector left
+(`<own file>.new.<process id>`, the process gone). The files hold numbers, times, ids, the fixed words and names
+that fit the patterns below: no prompt, file or report text.
 
 ## Columns
 In this order; the header is the names joined by commas. A column is only ever added at the end.
@@ -204,10 +206,12 @@ The collector exits 1 with one `error:` line and writes nothing when, at the fir
 a required tool is missing; the project folder is not the top of the project's main checkout (a subfolder, a
 linked worktree) or its name is no plain name; the transcripts folder is missing or holds a symbolic link on the
 way to a transcript; `ctxm/plans` or `ctxm/releases` is a symbolic link; `ctxm`, `ctxm/metrics`, `start`,
-`tasks.csv` or `counted.csv` is a symbolic link, or not a folder or a plain file, or (the last two) is empty or
-larger than 16 MiB (16777216 bytes), which it never writes; `ctxm/metrics` holds an old
-file that a collector that is gone kept ("Files"). A later collection also when: a roll-up's place
-(`ctxm/metrics/<plan>.md`) is a symbolic link or no plain file; `start` holds anything but one past time;
+`tasks.csv` or `counted.csv` is a symbolic link, or not a folder or a plain file, or (the last two) is larger
+than 16 MiB (16777216 bytes); `ctxm/metrics` holds an old file that a collector that is gone kept ("Files"). A
+later collection also when: `tasks.csv` or `counted.csv` is empty (0 bytes) while the other is not, which the
+collector never writes (an empty file beside an empty or missing one reads as a missing one, so the lines and the
+record are written anew); a roll-up's place (`ctxm/metrics/<plan>.md`) is a symbolic link or no plain file;
+`start` holds anything but one past time;
 `tasks.csv` has a header that is none of the format's (an earlier header of it, the first 17 columns, is read, and the
 file moved to the current header with `unknown` in the columns added since; a cut after any other number of columns
 is refused) or a line that is none of the format; `tasks.csv` is there without `counted.csv`, or `counted.csv`

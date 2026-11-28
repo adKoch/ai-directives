@@ -13,8 +13,8 @@
 readonly METRICS_FOLDER=ctxm/metrics
 readonly START_FILE=$METRICS_FOLDER/start TASKS_FILE=$METRICS_FOLDER/tasks.csv
 readonly COUNTED_FILE=$METRICS_FOLDER/counted.csv
-# tasks.csv and its record are read whole, so a larger file is refused: both are committed files another tool or a person
-# may edit.
+# tasks.csv and its record are read whole, so a larger file is refused: both are committed files another tool or a
+# person may edit.
 readonly LINES_LIMIT_BYTES=16777216
 # The places a write is prepared for, in the order they are renamed into; empty when no write is under way.
 PREPARED_PLACES=()
@@ -40,17 +40,28 @@ refuse_unsafe_store() {
   done
 }
 
-# Ends the collector when tasks.csv or its record is empty (0 bytes) or larger than the collector reads. A missing file is
-# another case (counted.jq), and an empty one is no missing one: the collector never writes either.
-refuse_unfit_lines_files() {
+# Ends the collector when tasks.csv or its record is larger than the collector reads.
+refuse_oversized_lines_files() {
   local place bytes
   for place in "$TASKS_FILE" "$COUNTED_FILE"; do
     has_stored "$place" || continue
     bytes="$(wc -c <"$PROJECT/$place")"
-    ((bytes > 0)) || refuse "$place is empty (0 bytes); restore it from git; nothing was written"
     ((bytes <= LINES_LIMIT_BYTES)) || refuse "$place is larger than the collector reads ($LINES_LIMIT_BYTES bytes);" \
-      "nothing was written"
+      "restore it from git; nothing was written"
   done
+}
+
+# Ends a later collection when tasks.csv or its record is empty (0 bytes) while the other is full: one of the two
+# was lost, and the collector never writes an empty one. Beside an empty or missing partner, an empty file reads as
+# a missing one (counted.jq), as it always has; the first collection reads neither.
+refuse_lone_empty_lines_file() {
+  refuse_empty_beside_full "$TASKS_FILE" "$COUNTED_FILE"
+  refuse_empty_beside_full "$COUNTED_FILE" "$TASKS_FILE"
+}
+
+refuse_empty_beside_full() {
+  has_stored "$1" && [[ ! -s "$PROJECT/$1" && -s "$PROJECT/$2" ]] || return 0
+  refuse "$1 is empty (0 bytes); restore it from git; nothing was written"
 }
 
 has_stored() {

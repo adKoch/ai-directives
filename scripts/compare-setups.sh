@@ -14,9 +14,6 @@ source "$REPO_ROOT/scripts/compare/program.sh"
 # shellcheck source=compare/projects.sh
 source "$REPO_ROOT/scripts/compare/projects.sh"
 
-# The rules of a comparison, each after the ones it needs (compare/program.sh).
-readonly COMPARISON_MODULES="collector/format collector/rollup collector/rollup_text compare/reading compare/figures
-  compare/comparison_text compare/comparison"
 readonly HELP_FILE="$REPO_ROOT/scripts/compare/help.txt"
 readonly USAGE='usage: compare-setups.sh [--help] [--] <project folder>...; --help says more'
 PROJECT_FOLDERS=()

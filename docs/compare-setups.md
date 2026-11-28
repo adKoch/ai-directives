@@ -25,8 +25,8 @@ Exit codes:
      part-way, which leaves what was written; a missing tool, an argument that is no project folder, a place that is
      a symbolic link, a file in ctxm/metrics/ that is no roll-up the collector wrote, a roll-up too large or
      unreadable, a jq step or a write to stdout that failed
-Needs bash, jq and coreutils (dirname, basename, wc, timeout, sleep) from the caller's toolchain; LIBRARY_BUDGET_SECONDS sets
-its time budget (300 seconds). The rules: docs/compare-setups.md of the template library.
+Needs bash, jq and coreutils (dirname, basename, wc, timeout, sleep) from the caller's toolchain;
+LIBRARY_BUDGET_SECONDS sets its time budget (300 seconds). The rules: docs/compare-setups.md of the template library.
 ```
 
 For example, from the library's checkout, with the tools of a project's dev shell:
@@ -73,15 +73,16 @@ as escapes.
 It exits 1 with one `error:` line, prints nothing on stdout and writes nothing when:
 a tool is missing; no project folder is given, an option is not `--help` or `--`, or more than 8 folders are given;
 a folder given is no folder, has no `ctxm/metrics/` folder, or holds no `.md` file there; `ctxm` or `ctxm/metrics`
-is a symbolic link; `ctxm/metrics/` could not be read, holds a file an interrupted collection kept
-(`<file>.old.<process id>`), or more than 100 `.md` files; a `.md` file there is no plain file (a link, a folder, a
-pipe), could not be read, is larger than 1 MiB, or the roll-ups given hold more than 16 MiB together (sizes taken
-from the file system before anything is read); a `.md` file's name is no plan name (`docs/metrics-format.md`, "The
-roll-ups") or its text is not what the collector writes (above). The line names the place, escaped.
+is a symbolic link; `ctxm/metrics/` could not be read, holds an old file an interrupted collection kept of one of its
+own files (`<own file>.old.<process id>`, `docs/metrics-format.md`, "Files"; a file only named like one is none), or
+more than 100 `.md` files; a `.md` file there is no plain file (a link, a folder, a pipe), could not be read, is
+larger than 1 MiB, or the roll-ups given hold more than 16 MiB together (sizes taken from the file system before
+anything is read); a `.md` file's name is no plan name (`docs/metrics-format.md`, "The roll-ups") or its text is not
+what the collector writes (above). The line names the place, escaped.
 
 It also exits 1 with one `error:` line when a jq step fails (jq's own words are not shown: they may quote what it
-read), and when the text cannot be written to stdout for any reason but a closed pipe, which ends it quietly with 0 (a write
-that fails part-way leaves what it wrote).
+read), and when the text cannot be written to stdout for any reason but a closed pipe, which ends it quietly with 0
+(a write that fails part-way leaves what it wrote).
 
 ## Tools
 The library ships no toolchain. The comparison needs `bash` (4.4 or later), `jq`, and `dirname`, `basename`, `wc`,

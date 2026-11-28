@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # The library's minimal check, within a time budget: shellcheck on the library's scripts and tests and on the scripts
-# agents-base ships, and no hidden character in any file (lint; the rest of ctxm/ not yet shellchecked,
-# scripts/lib/steps/lint.sh), then every test file (test). It
-# checks its tools first and runs nothing without them: the caller's toolchain provides them (README.md, Tools).
+# agents-base ships, and no hidden character in any file or file name (lint; the rest of ctxm/ is not shellchecked
+# yet, scripts/lib/steps/lint.sh), then every test file (test). It checks its tools first and runs nothing without
+# them: the caller's toolchain provides them (README.md, Tools).
 # Usage: scripts/check.sh
 #   LIBRARY_BUDGET_SECONDS=<n> sets the budget in seconds (300 by default).
 # Prints one line per step (result, time, what it covered) and the total; a failed step's output follows on stderr

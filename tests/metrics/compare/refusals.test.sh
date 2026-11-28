@@ -21,15 +21,6 @@ TURN_AROUND="$(printf '\342\200\256')"
 NO_UTF8="$(printf '\377')"
 readonly TURN_AROUND NO_UTF8
 
-# Fails unless the last comparison was refused with that line (given in parts, joined by spaces), printed nothing
-# on stdout and wrote nothing.
-assert_refused() {
-  assert_prints 1 cat status
-  assert_prints "error: $*" cat stderr
-  assert_prints '' cat stdout
-  assert_nothing_written
-}
-
 # Fails when a raw character of the abuse cases, or the mark of the synthetic free text, stands in what the
 # comparison said. Matched byte for byte (the C locale), so the locale of the test's shell cannot change what is found.
 assert_nothing_raw_got_out() {

@@ -7,6 +7,10 @@
 
 readonly COLLECTOR_RULES="$REPO_ROOT/ctxm/agents-base/.claude/scripts/metrics"
 readonly COMPARISON_RULES="$REPO_ROOT/scripts/compare"
+# The rules of a comparison, each after the ones it needs.
+# shellcheck disable=SC2034 # read by compare-setups.sh and the tests
+readonly COMPARISON_MODULES="collector/format collector/rollup collector/rollup_text compare/reading compare/figures
+  compare/comparison_text compare/comparison"
 # shellcheck source=../../ctxm/agents-base/.claude/scripts/metrics/program.sh
 source "$COLLECTOR_RULES/program.sh"
 readonly RULES_FAILED='the rules of the comparison (scripts/compare/ and those of the collector, run by jq) failed,'\
