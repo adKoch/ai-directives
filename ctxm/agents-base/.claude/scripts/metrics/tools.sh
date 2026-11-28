@@ -1,7 +1,8 @@
 # shellcheck shell=bash
-# The collector's tool requirement, and its refusal. The templates ship no toolchain: the project's own provides
-# bash, jq, git and the five coreutils commands the collector calls. Sourced first by collect-metrics.sh, which
-# calls require_tools before it reads anything.
+# The collector's tool requirement, its refusal, and how it runs a tool whose words name outside text. The templates
+# ship no toolchain: the project's own provides bash, jq, git and the five coreutils commands the collector calls.
+# Sourced first by collect-metrics.sh, which calls require_tools before it reads anything; run_escaped and
+# size_in_bytes need metrics_jq (program.sh), sourced after it.
 
 readonly REQUIRED_TOOLS=(jq git ln mkdir mv rm wc)
 # The status of a refusal inside the collector, so that its end tells a refusal (its line already said) from a step
@@ -19,7 +20,7 @@ refuse() {
 }
 
 # Runs a command and prints what it said: on success its output on stdout, on failure its words on stderr, escaped
-# (escaped_text, format.jq), because they name the project's paths, which are outside text. The status is the
+# (escaped_text, escaping.jq), because they name the project's paths, which are outside text. The status is the
 # command's own. The one place a tool's words are escaped; a tool that its parent must be able to signal (mv) is not
 # run through it, as it would run in a subshell. For commands whose output is one result or none.
 run_escaped() {
@@ -28,15 +29,16 @@ run_escaped() {
   if ((status == 0)); then
     [[ -z "$said" ]] || printf '%s\n' "$said"
   else
-    printf '%s\n' "$said" | metrics_jq format 'escaped_text' --raw-input --raw-output >&2
+    printf '%s\n' "$said" | metrics_jq escaping 'escaped_text' --raw-input --raw-output >&2
   fi
   return "$status"
 }
 
-# Prints the size of a plain file in bytes, counted without reading it into the shell; its failure words are escaped.
+# Prints the size of a plain file in bytes, counted without reading it into the shell; fails as wc fails, its words
+# escaped, and prints nothing then, so no caller reads a size that was never counted.
 size_in_bytes() {
   local counted
-  counted="$(run_escaped wc -c -- "$1")"
+  counted="$(run_escaped wc -c -- "$1")" || return
   printf '%s\n' "${counted%% *}"
 }
 

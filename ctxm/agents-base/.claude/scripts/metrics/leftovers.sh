@@ -11,25 +11,23 @@
 # are never touched, nor any old file kept (refuse_unsettled_files). Called once per collection that writes
 # something, after the write check (begin_write, store.sh) and before its first file is prepared.
 remove_abandoned_files() {
-  local name
+  local names name
+  names="$(abandoned_file_names)"
   while IFS= read -r name; do
     [[ -z "$name" ]] || rm -f -- "$PROJECT/$METRICS_FOLDER/$name"
-  done < <(abandoned_file_names)
+  done <<<"$names"
 }
 
-# Succeeds when there is a file remove_abandoned_files would remove: removing it is a write.
-has_abandoned_files() {
-  [[ -n "$(abandoned_file_names)" ]]
-}
-
-# Prints the name of each new file a killed collector left, in byte order. A folder of such a name is none of its
-# files: the collector makes none there, so it is never listed.
+# Prints the name of each new file a killed collector left, in byte order: the files remove_abandoned_files removes,
+# so a collection with one writes something. A folder of such a name is none of its files: the collector makes none
+# there, so it is never listed.
 abandoned_file_names() {
-  local name path
+  local names name path
+  names="$(left_by_gone_collectors new)"
   while IFS= read -r name; do
     path="$PROJECT/$METRICS_FOLDER/$name"
     [[ -z "$name" ]] || [[ -d "$path" && ! -L "$path" ]] || printf '%s\n' "$name"
-  done < <(left_by_gone_collectors new)
+  done <<<"$names"
 }
 
 # Ends the collector when a collector that is gone left an old file it kept: the only copy of bytes a stopped write

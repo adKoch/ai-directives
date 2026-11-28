@@ -44,14 +44,24 @@ def is_call_id: matches("[A-Za-z0-9][A-Za-z0-9_-]{0,127}");
 def is_record_id: is_session_id;
 def is_project_name: matches("[A-Za-z0-9][A-Za-z0-9._-]{0,63}") and (is_fixed_word | not);
 def is_template_name: matches("[a-z0-9][a-z0-9-]{0,63}");
-def is_library_commit: matches("[0-9a-f]{40}([0-9a-f]{24})?");
-# Lock format 8, as ctxm checks it: a release names its full commit id, a commit pin may be abbreviated; either case.
+# Lock format 8, as ctxm checks it (is_commit_id, is_full_commit_id): a commit pin names 4 to 40 hex digits, a release
+# its full commit id; either case. A lock before format 8 is read by the same rule, as ctxm 0.8 reads it.
 def is_released_commit: matches("[0-9a-fA-F]{40}");
 def is_pinned_commit: matches("[0-9a-fA-F]{4,40}");
-# A released version of a template: `x.y` or `x.y.z`, then an optional suffix of letters, digits and `-` in dotted
-# parts. It never holds `@`, the mark that separates it from the name and the commit in the fingerprint.
+# The library a template is read from, as ctxm checks it: printable ASCII without spaces.
+def is_template_source: matches("[!-~]+");
+# A released version of a template, by ctxm's grammar (Version::parse): at most 64 letters, digits, `.` and `-`; two
+# or three numbers, each a u32 without a leading zero; then, after the first `-`, an optional suffix of dotted parts,
+# none empty, that does not end in `.lock` in any case. It never holds `@`, the mark that separates it from the name
+# and the commit in the fingerprint.
+def is_version_number: matches("0|[1-9][0-9]{0,9}") and tonumber <= 4294967295;
+def is_version_suffix: length > 0 and (split(".") | all(length > 0)) and (ascii_downcase | endswith(".lock") | not);
+def version_parts: (index("-") // null) as $dash | if $dash == null then [., null] else [.[:$dash], .[$dash + 1:]] end;
 def is_template_version:
-  matches("[0-9]{1,6}\\.[0-9]{1,6}(\\.[0-9]{1,6})?(-[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)*)?") and length <= 64;
+  matches("[A-Za-z0-9.-]{1,64}")
+  and (version_parts as [$numbers, $suffix]
+    | ($numbers | split(".") | (length == 2 or length == 3) and all(is_version_number))
+    and ($suffix == null or ($suffix | is_version_suffix)));
 # A plan is a file of ctxm/plans/, its roll-up ctxm/metrics/<plan>.md: letters and digits in parts joined by one `.`,
 # `_` or `-`, so the name holds no `..`, no `/` and no leading dot.
 def is_plan_name: matches("[A-Za-z0-9]+([._-][A-Za-z0-9]+){0,15}") and length <= 64;
@@ -92,11 +102,6 @@ def field_text:
   else tostring | if is_field then . else error("a value that is no field of tasks.csv reached a line") end
   end;
 def csv_line: . as $line | [columns[] | $line[.] | field_text] | join(",");
-
-# Text a tool of the collector's said on its stderr, one line at a time, as text that is safe to print: it names the
-# project's paths, which a person chose, so every character but printable ASCII is written as `\u{<hex>}`.
-def hex_digits: if . < 16 then "0123456789abcdef"[.:. + 1] else (. / 16 | floor | hex_digits) + (. % 16 | hex_digits) end;
-def escaped_text: explode | map(if . >= 32 and . <= 126 then [.] | implode else "\\u{\(hex_digits)}" end) | join("");
 
 def by_column: [columns, .] | transpose | map({key: .[0], value: .[1]}) | from_entries;
 

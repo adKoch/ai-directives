@@ -4,19 +4,24 @@
 # make-project.sh writes them.
 # jq reads a definition before its use: the entries, commit_files and commit_date, are the last two.
 
-
-# A template of the lock: a pin to a released version names it (format 8), and its commit; `extra_lines` are written
-# as they stand after the entry, so a history can hold a line no ctxm would write (a malformed or a doubled key).
+# A template of the lock: a pin to a released version names it (format 8), and its commit. A history can also hold
+# what no ctxm would write: `header` replaces the table's header, a `source` of null leaves the line out, and
+# `extra_lines` are written as they stand after the entry (a malformed or a doubled key).
+def raw_lines($lines): ($lines // []) | map(. + "\n") | add // "";
 def version_line: if .version == null then "" else "version = \(.version | tojson)\n" end;
-def extra_lines: (.extra_lines // []) | map(. + "\n") | add // "";
+def source_line: if has("source") and .source == null then "" else "source = \(.source // "local" | tojson)\n" end;
 
 def template_entry:
-  "\n[[templates]]\nname = \(.name | tojson)\nsource = \"local\"\n" + version_line
-  + "commit = \(.commit | tojson)\n" + extra_lines;
+  "\n\(.header // "[[templates]]")\nname = \(.name | tojson)\n" + source_line + version_line
+  + "commit = \(.commit | tojson)\n" + raw_lines(.extra_lines);
 
+# The lock: `top_lines` are written as they stand before the first table, `end_lines` after the last template.
 def lock_file: {
   file: ".ctxm/ctxm.lock",
-  content: ("version = \(.version)\nfolders = [\".claude/agents\"]\n" + (.templates | map(template_entry) | add))
+  content: (
+    "version = \(.version)\nfolders = [\".claude/agents\"]\n" + raw_lines(.top_lines)
+    + (.templates | map(template_entry) | add // "") + raw_lines(.end_lines)
+  )
 };
 
 # A value the history leaves out has no line: a real agent file may name no model or no effort.
