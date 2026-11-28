@@ -45,7 +45,7 @@ source "$METRICS_SCRIPTS/leftovers.sh"
 source "$METRICS_SCRIPTS/telling.sh"
 
 # The rules of a collection, each after the ones it needs (program.sh).
-readonly PLAN_MODULES="format setup counted events report holdings rollup rollup_text lines"
+readonly PLAN_MODULES="format lock_strings setup counted events report holdings rollup rollup_text lines"
 readonly USAGE='usage: collect-metrics.sh [--dry-run] [--project <folder>] [--transcripts <folder>]'
 DRY_RUN=no
 PROJECT_FOLDER=.

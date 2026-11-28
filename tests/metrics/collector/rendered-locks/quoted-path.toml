@@ -1,0 +1,16 @@
+version = 8
+folders = ["docs"]
+
+[values]
+
+[[templates]]
+name = "quoted"
+source = "local"
+commit = "e90b39e8bb3fd8afc8cae0f2d80f8a0926893f60"
+
+[[files]]
+path = """docs/it's "quoted" '''.md"""
+templates = ["quoted"]
+merge_type = "replace"
+executable = false
+base = false

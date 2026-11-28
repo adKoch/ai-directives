@@ -43,7 +43,14 @@ def is_agent_id: matches("[0-9a-z]{1,64}") and (is_fixed_word | not);
 def is_call_id: matches("[A-Za-z0-9][A-Za-z0-9_-]{0,127}");
 def is_record_id: is_session_id;
 def is_project_name: matches("[A-Za-z0-9][A-Za-z0-9._-]{0,63}") and (is_fixed_word | not);
-def is_template_name: matches("[a-z0-9][a-z0-9-]{0,63}");
+# A template's name as ctxm checks it (check_relative, check_storable): a relative `/` path without a backslash or a
+# control character, no part empty, `.`, `..` or `.git` in any case, none ending in `.` or a space.
+def is_template_name:
+  type == "string" and (explode | any(. < 32 or . == 127 or . == 92) | not) and (test("\\A[A-Za-z]:") | not)
+  and (split("/") | all(. != "" and . != "." and . != ".." and (endswith(".") or endswith(" ") | not)
+    and ascii_downcase != ".git"));
+# A name the fingerprint can hold: a field of tasks.csv, without `@` and `+`, the marks between its parts.
+def is_fingerprint_name: matches("[A-Za-z0-9][A-Za-z0-9./-]*");
 # Lock format 8, as ctxm checks it (is_commit_id, is_full_commit_id): a commit pin names 4 to 40 hex digits, a release
 # its full commit id; either case. A lock before format 8 is read by the same rule, as ctxm 0.8 reads it.
 def is_released_commit: matches("[0-9a-fA-F]{40}");

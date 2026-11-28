@@ -115,4 +115,19 @@ test_a_template_ctxm_refuses_is_refused_and_nothing_is_written() {
   assert_refused_for_the_lock "names a template twice"
 }
 
+# catches: a template name ctxm refuses (a `..`, `.git` or empty part, a closing dot) accepted, or one the fingerprint
+# cannot hold (an `_`, the `+` and `@` between its parts) written, so two setups read as one or a line is broken.
+test_a_template_name_that_is_none_is_refused_and_nothing_is_written() {
+  local name
+  for name in a/../b .git/x A/.GIT x. a//b /a; do
+    collect_with_lock 8 '[{"name": "'"$name"'", "commit": "'"$COMMIT_ONE"'"}]'
+    assert_refused_for_the_lock "names a template or a library commit that is none"
+  done
+  for name in team/rust_x a+b a@b .hidden; do
+    collect_with_lock 8 '[{"name": "'"$name"'", "commit": "'"$COMMIT_ONE"'"}]'
+    # shellcheck disable=SC2016 # the backticks are the message's own
+    assert_refused_for_the_lock 'names a template the fingerprint cannot hold: only letters, digits, `.`, `-` and `/`'
+  done
+}
+
 run_tests

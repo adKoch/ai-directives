@@ -1,0 +1,16 @@
+version = 8
+folders = ["docs"]
+
+[values]
+
+[[templates]]
+name = "team/Rust.v2"
+source = "local"
+commit = "c9c0fab97867a6be867823617912f572f399ef7a"
+
+[[files]]
+path = "docs/rust.md"
+templates = ["team/Rust.v2"]
+merge_type = "replace"
+executable = false
+base = false

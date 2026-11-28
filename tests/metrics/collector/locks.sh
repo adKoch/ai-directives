@@ -16,9 +16,20 @@ key twice"
 # optional third argument, a JSON object, adds to the lock (`top_lines`, `end_lines`: tests/metrics/support/project.jq).
 project_with_lock() {
   local format=$1 templates=$2 more=${3:-'{}'}
+  project_with_lock_of "$(jq --null-input --compact-output --argjson format "$format" --argjson templates "$templates" \
+    --argjson more "$more" '{version: $format, templates: $templates} + $more')"
+}
+
+# Builds ./project from one commit holding the lock file given, as it stands (a lock ctxm rendered: rendered-locks/).
+project_with_lock_file() {
+  project_with_lock_of "$(jq --null-input --compact-output --rawfile text "$1" '{text: $text}')"
+}
+
+# Builds ./project from one commit holding the lock the JSON object describes (tests/metrics/support/project.jq).
+project_with_lock_of() {
   mkdir -p histories
-  jq --null-input --argjson format "$format" --argjson templates "$templates" --argjson more "$more" '
-    {about: "a lock under test", commits: [{minute: -1440, lock: ({version: $format, templates: $templates} + $more),
+  jq --null-input --argjson lock "$1" '
+    {about: "a lock under test", commits: [{minute: -1440, lock: $lock,
       agents: [{name: "inspector", description: "synthetic-text inspector", model: "claude-synthetic-small",
         effort: "medium"}]}]}
   ' >histories/under-test.json
@@ -29,6 +40,14 @@ project_with_lock() {
 collect_with_lock() {
   rm -rf project transcripts "$METRICS"
   project_with_lock "$@"
+  transcripts finished-run
+  collect
+}
+
+# Collects a project whose lock is the file given, as collect_with_lock does.
+collect_with_lock_file() {
+  rm -rf project transcripts "$METRICS"
+  project_with_lock_file "$1"
   transcripts finished-run
   collect
 }

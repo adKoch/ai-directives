@@ -74,19 +74,37 @@ test_a_format_given_twice_is_refused_and_nothing_is_written() {
   assert_refused_for_the_lock "$UNREAD_LINE"
 }
 
-# catches: a multi-line string of another table holding lines that read as a template, taken for one: the
-# fingerprint names a template that was never applied.
-test_a_multi_line_string_is_refused_and_nothing_is_written() {
-  local opening
-  for opening in '"""' "'''"; do
-    collect_with_lock 8 '[{"name": "coding", "commit": "'"$COMMIT_ONE"'"}]' '{"end_lines": '"$(json_lines '[values]' \
-      "note = $opening" '[[templates]]' 'name = "docs"' 'source = "local"' "commit = \"$COMMIT_TWO\"" "$opening")"'}'
-    assert_refused_for_the_lock "$UNREAD_LINE"
+# catches: a multi-line string of a table the collector does not read (as ctxm writes one for a value with a line
+# break) refused, or a line inside it that reads as a template taken for one: a template that was never applied.
+test_a_multi_line_string_in_a_table_not_read_is_skipped_whole() {
+  local table opening
+  for table in '[values]' '[defaults]' '[[files]]'; do
+    for opening in '"""' "'''"; do
+      collect_with_lock 8 '[{"name": "coding", "commit": "'"$COMMIT_ONE"'"}]' '{"end_lines": '"$(json_lines "$table" \
+        "note = $opening" '[[templates]]' 'name = "docs"' 'source = "local"' "commit = \"$COMMIT_TWO\"" "$opening")"'}'
+      assert_prints 0 cat status
+      assert_prints "coding@$COMMIT_ONE" line_fields a0000000000000001 templates
+    done
   done
 }
 
-# catches: the lines ctxm writes around the templates (another table, a blank line, a comment, a line ending in a
-# carriage return) refused, so no collection of a project ctxm set up could be made.
+# catches: a multi-line string where ctxm writes none (before the tables, in a template) or one never closed, and a
+# one-line string never closed, read past: the lines after it read as headers and keys they are not.
+test_a_string_ctxm_does_not_write_is_refused_and_nothing_is_written() {
+  local commit_pin='[{"name": "coding", "commit": "'"$COMMIT_ONE"'"}]' more
+  for more in '{"end_lines": ["[values]", "note = \"\"\"", "[[templates]]"]}' \
+    '{"end_lines": ["[[files]]", "path = '"'''"'a"]}' '{"end_lines": ["[values]", "note = \"a"]}' \
+    '{"top_lines": ["note = \"\"\"", "\"\"\""]}'; do
+    collect_with_lock 8 "$commit_pin" "$more"
+    assert_refused_for_the_lock "$UNREAD_LINE"
+  done
+  collect_with_lock 8 '[{"name": "coding", "commit": "'"$COMMIT_ONE"'",
+    "extra_lines": ["version = \"\"\"", "2.1\"\"\""]}]'
+  assert_refused_for_the_lock "$UNREAD_LINE"
+}
+
+# catches: the lines ctxm writes around the templates (another table, a blank line, a comment) refused, so no
+# collection of a project ctxm set up could be made.
 test_the_lines_ctxm_writes_are_read() {
   collect_with_lock 8 '[{"name": "coding", "commit": "'"$COMMIT_ONE"'", "extra_lines": ["", "# a note"]}]' \
     '{"top_lines": ["# a note", "", "[values]", "x = \"[[templates]]\""], "end_lines": ["[[files]]",

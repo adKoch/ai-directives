@@ -15,10 +15,11 @@ def template_entry:
   "\n\(.header // "[[templates]]")\nname = \(.name | tojson)\n" + source_line + version_line
   + "commit = \(.commit | tojson)\n" + raw_lines(.extra_lines);
 
-# The lock: `top_lines` are written as they stand before the first table, `end_lines` after the last template.
+# The lock: `top_lines` are written as they stand before the first table, `end_lines` after the last template; a lock
+# given as `text` (one ctxm rendered: ../collector/rendered-locks/) is written as it stands.
 def lock_file: {
   file: ".ctxm/ctxm.lock",
-  content: (
+  content: .text // (
     "version = \(.version)\nfolders = [\".claude/agents\"]\n" + raw_lines(.top_lines)
     + (.templates | map(template_entry) | add // "") + raw_lines(.end_lines)
   )

@@ -7,7 +7,7 @@
 # `problem` (a lock or an agent file the collector cannot read). A problem refuses the collection only when a
 # line would need that setup (lines.jq), and only until a later commit has a setup without one (with_fixes_noted),
 # so an old commit never blocks a project.
-# Pure; needs format.jq. Read from the bottom (with_fixes_noted, setup) up.
+# Pure; needs format.jq and lock_strings.jq. Read from the bottom (with_fixes_noted, setup) up.
 # Adding a lock format: tests/metrics/collector/README.md of the template library, "Adding a lock format".
 
 # The formats that pin a template to one library commit (6 is what ctxm 0.7 writes) and the one that may pin it to a
@@ -29,38 +29,44 @@ def other_tables: ["[[files]]", "[values]", "[defaults]"];
 
 def is_skipped_line: test("\\A[ \\t]*(#.*)?\\z");
 
-# A key of a template on its own line, as ctxm writes it: no indent, no quotes around the key, a string without an
-# escape, nothing after it.
+# A key of a template on its own line, as ctxm writes it: no indent, no quotes around the key, a one-line string
+# without an escape, nothing after it.
 def template_entry:
   capture("\\A(?<key>name|source|version|commit)[ \\t]*=[ \\t]*\"(?<value>[^\"\\\\]*)\"[ \\t]*\\z") // unread_line;
 
-# A key before the first table: the format's version, a number, and the folders, which are not read.
+# A key before the first table: the format's version, a number; the folders, on one line, and `files = []`, which a
+# lock without managed files holds, are not read.
 def top_entry:
-  if test("\\Afolders[ \\t]*=[ \\t]*\\[.*\\][ \\t]*\\z") then {key: "folders", value: true}
+  if test("\\Afolders[ \\t]*=[ \\t]*\\[.*\\][ \\t]*\\z") and line_end(null) == null then {key: "folders", value: true}
+  elif test("\\Afiles[ \\t]*=[ \\t]*\\[[ \\t]*\\][ \\t]*\\z") then {key: "files", value: true}
   else capture("\\A(?<key>version)[ \\t]*=[ \\t]*(?<value>[0-9]+)[ \\t]*\\z") // unread_line
   end;
 
 # A key given twice is refused, as ctxm refuses it: the first and the last would be two answers.
 def add_entry($entry): if has($entry.key) then unread_line else .[$entry.key] = $entry.value end;
 
-# A multi-line string could hold a line that reads as a header, so a lock with one is refused; ctxm writes none.
+# A line of a table the collector does not read is skipped, and so is every line of a multi-line string it opens, up
+# to the line that closes it (lock_strings.jq): nothing inside a value is read as a header or a key.
+def skip_line($line):
+  .open as $open | ($line | line_end($open)) as $end | if $end == "broken" then unread_line else .open = $end end;
+
 def add_lock_line($line):
-  if $line | is_skipped_line then .
-  elif $line | test("\"\"\"|'''") then unread_line
+  if .open != null then skip_line($line)
+  elif $line | is_skipped_line then .
   elif $line == "[[templates]]" then .table = "templates" | .templates += [{}]
   elif $line | IN(other_tables[]) then .table = "another"
   elif $line | test("\\A[ \\t]*\\[") then unread_line
   elif .table == null then .top |= add_entry($line | top_entry)
   elif .table == "templates" then .templates[-1] |= add_entry($line | template_entry)
-  else .
+  else skip_line($line)
   end;
 
 # The format's version and the [[templates]] tables of a lock. A line ends at a line feed, with or without a carriage
-# return before it, as TOML reads it.
+# return before it, as TOML reads it. A multi-line string never closed is refused.
 def read_lock:
   gsub("\r\n"; "\n") | split("\n")
-  | reduce .[] as $line ({table: null, top: {}, templates: []}; add_lock_line($line))
-  | {version: .top.version, templates};
+  | reduce .[] as $line ({table: null, open: null, top: {}, templates: []}; add_lock_line($line))
+  | if .open != null then unread_line else {version: .top.version, templates} end;
 
 # A commit pin names a library commit, which may be abbreviated, in every format, as ctxm checks it. A commit id is
 # lowercase in the fingerprint, as git prints it, so a lock of ctxm 0.7 gives the form it always gave.
@@ -78,6 +84,8 @@ def version_template:
 
 def applied_template($format):
   if .name | is_template_name | not then lock_problem("names a template or a library commit that is none")
+  elif .name | is_fingerprint_name | not then
+    lock_problem("names a template the fingerprint cannot hold: only letters, digits, `.`, `-` and `/`")
   elif .source | is_template_source | not then lock_problem("names a template without a source")
   elif .version == null then commit_template
   elif $format == version_lock_format then version_template

@@ -27,7 +27,7 @@ page says how it is built, how it is tested and how to extend it.
 |---|---|---|
 | Entry | `collect-metrics.sh` | reads the options, checks the tools, wires the ports to the rules, prints; decides nothing |
 | Ports (bash) | `project.sh` (git, read-only), `transcripts.sh` (the transcripts folder, read-only), `plans.sh` (the plans, the commits' subjects and the release candidates, read-only), `store.sh` (`ctxm/metrics/`, the only writer, `tasks.csv` and its record `counted.csv` included), `places.sh` (the checks of what stands in `ctxm/metrics/` before a read or a write), `tools.sh` (the tool requirement, and a tool run with its words escaped), `telling.sh` (what the collector prints) | every effect; each turns what it reads into JSON facts or text for the rules |
-| Rules (jq, pure) | `format.jq`, `escaping.jq`, `facts.jq`, `setup.jq`, `counted.jq`, `events.jq`, `holdings.jq`, `lines.jq`, `report.jq`, `rollup.jq`, `rollup_text.jq`, `rollup_facts.jq` | every decision; they read their input and arguments and write nothing |
+| Rules (jq, pure) | `format.jq`, `escaping.jq`, `facts.jq`, `lock_strings.jq`, `setup.jq`, `counted.jq`, `events.jq`, `holdings.jq`, `lines.jq`, `report.jq`, `rollup.jq`, `rollup_text.jq`, `rollup_facts.jq` | every decision; they read their input and arguments and write nothing |
 | The seam | `program.sh`: `metrics_jq "<modules>" '<filter>' <jq options>` | joins the named modules into one program, in the order given |
 
 The flow of a collection: the ports print one JSON object per setup, session and run (the facts); `lines.jq`'s `plan`
@@ -59,7 +59,7 @@ reads the library's history.
 Test files: `runs.test.sh` (run lines), `sessions.test.sh` (main's lines, copies), `copies.test.sh` (copies,
 chains and deletions: each call once, in both id orders), `record.test.sh` (the record's refusals and its
 write), `empty-files.test.sh` (an empty `tasks.csv` or record, refused only beside a full one), `start.test.sh`
-(the start), `refusals.test.sh` (what stops a collection), `lock-formats.test.sh` (the lock formats read, and each pin refused), `lock-lines.test.sh` (each line of a lock the collector does not read, refused), `permissions.test.sh` (where it may not write or read), `text.test.sh` (no text gets out), `format.test.sh` (the page, the headers and an earlier header), `store.test.sh` (the collector's own working
+(the start), `refusals.test.sh` (what stops a collection), `lock-formats.test.sh` (the lock formats read, and each pin refused), `lock-lines.test.sh` (each line of a lock the collector does not read, refused), `rendered-locks.test.sh` (the locks ctxm itself wrote, in `rendered-locks/`, read), `permissions.test.sh` (where it may not write or read), `text.test.sh` (no text gets out), `format.test.sh` (the page, the headers and an earlier header), `store.test.sh` (the collector's own working
 files, its tools and its environment). The roll-up tests are in `../rollup/`: `figures.test.sh` (the
 figures), `refusals.test.sh` (what a roll-up refuses or leaves out) and `writing.test.sh` (roll-ups and lines all
 or nothing); `rolling.sh` adds plans and commits to a project and looks for its shapes and histories in its own
@@ -94,8 +94,9 @@ setup. A lock before format 8 gives each template its commit; format 8 may add a
 1. `setup.jq`: `applied_templates` decides by the lock's `version`; add the version to `commit_lock_formats`, or beside
    `version_lock_format` with a reader that gives the same list for the new format. Keep the refusal for every version
    that has no reader. `read_lock` reads only the lines ctxm writes and refuses any other (a header, a key or a form
-   it does not know, a key twice, a multi-line string): a new key or table of the format is added there, never
-   skipped.
+   it does not know, a key twice, a multi-line string where ctxm writes none); the lines of the tables it does not read
+   are skipped, a multi-line string there whole (`lock_strings.jq`). A new key or table of the format is added
+   there, never skipped.
 2. A new part of the fingerprint inside `templates` (as the version) changes what two lines of one setup look like: it
    keeps the form of every line already written (a commit pin is still `<name>@<commit>`). A part that needs its own
    column is the note above ("Adding a metric").
@@ -104,7 +105,8 @@ setup. A lock before format 8 gives each template its commit; format 8 may add a
 4. A history in `histories/` with the new lock (`tests/metrics/support/project.jq` writes the lock: a new key needs it
    extended; `header`, `extra_lines`, `top_lines` and `end_lines` write lines no ctxm would) and tests in
    `lock-formats.test.sh`: the fingerprint, a session across the update that moves the lock, and a refusal for each
-   input the format reads; a refusal for each new line form in `lock-lines.test.sh`. The refusal of an
+   input the format reads; a refusal for each new line form in `lock-lines.test.sh`; a lock the new ctxm wrote in
+   `rendered-locks/` (its README says how), read in `rendered-locks.test.sh`. The refusal of an
    unknown format, `test_a_lock_in_another_format_is_refused_naming_the_file` in `refusals.test.sh`, stays for the next
    unknown version (`histories/later-lock-format.json`): move that history's version up when a format is read.
 

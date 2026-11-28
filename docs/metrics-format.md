@@ -87,7 +87,7 @@ A value read from outside the collector is checked before use; one that does not
 |---|---|---|
 | task name | a request id with up to two prefixes (`REQ-004`, `AD-REQ-009`) or a release version (`v0.8`), then 1 to 8 parts of 1 to 24 letters and digits, joined by `-`; 80 characters at most | the run is counted and not written |
 | role, model | a plain word: letters, digits and `-` (a model also `.`, `_`, `:`, `[`, `]`) | the run or the part is counted and not written |
-| model, effort in an agent file; template name, version, library commit in the lock | plain words; a version as ctxm reads it (`wiki/pages/core/library/versions/README.md` of ctxm): `x.y` or `x.y.z`, each number a u32 without a leading zero, then an optional `-` suffix of letters, digits, `-` and dotted parts, none empty, not ending in `.lock` in any case (64 characters at most, no `@`); a commit is 40 hex digits for a version pin and 4 to 40 for a commit pin, either case, in every format, as ctxm 0.8 reads it; a template names its source (printable ASCII, no space) and is listed once | the collection is refused when a line needs that setup, until a later commit has a setup the collector can read ("What becomes a line") |
+| model, effort in an agent file; template name, version, library commit in the lock | plain words; a version as ctxm reads it (`wiki/pages/core/library/versions/README.md` of ctxm): `x.y` or `x.y.z`, each number a u32 without a leading zero, then an optional `-` suffix of letters, digits, `-` and dotted parts, none empty, not ending in `.lock` in any case (64 characters at most, no `@`); a commit is 40 hex digits for a version pin and 4 to 40 for a commit pin, either case, in every format, as ctxm 0.8 reads it; a template names its source (printable ASCII, no space) and is listed once; its name is one ctxm accepts (a relative `/` path: no part empty, `.`, `..` or `.git`, none ending in `.` or a space) that the fingerprint can hold (letters, digits, `.`, `-` and `/`, starting with a letter or a digit) | the collection is refused when a line needs that setup, until a later commit has a setup the collector can read ("What becomes a line") |
 | session id, agent id, time | their id shapes | the transcript is counted as not read whole |
 | API call id (`message.id`), compaction id (`uuid`) | a letter or a digit, then up to 127 letters, digits, `_` and `-`; a uuid (8-4-4-4-12 lowercase hex digits) for a compaction id | the transcript is counted as not read whole |
 | Findings line | the last line of the run's report (the `message` of its last handback call, else its last text; "Key names read from a transcript"), exactly `Findings: <n> blocking, <m> nits`, each count 1 to 9 digits | the run is written with `none` in both columns; a last line that opens with `Findings:` and is none of the format is counted on stderr, and nothing of it is kept |
@@ -232,12 +232,15 @@ header, a row that is none of the format ("The record") or names an event twice,
 file, never rebuilt from the transcripts, which would count again what the copies of a deleted original hold; a line
 needs a setup whose lock is not in a format the collector reads (`version = 6` to `8`), holds a line the collector
 does not read (it reads only the lines ctxm writes: a table header other than `[[templates]]`, `[[files]]`,
-`[values]` and `[defaults]` exactly, a line before the first table other than `version = <n>` and `folders = [...]`,
-a line of a template other than `name`, `source`, `version` or `commit = "<value>"` with no indent, quoted key,
-escape or comment after it, a key or the format given twice, or a multi-line string anywhere), a template without a
-source or listed twice, a version in a lock before format 8, a version or a commit that is none, or whose lock or
-agent files name something that is no plain word, while no later commit has a setup the collector can read
-("What becomes a line"): the line names the commit and says to fix it in a new one. A transcript with a line that is
+`[values]` and `[defaults]` exactly, a line before the first table other than `version = <n>`, `folders = [...]` and
+`files = []`, a line of a template other than `name`, `source`, `version` or `commit = "<value>"` with no indent,
+quoted key, escape or comment after it, a key or the format given twice, a multi-line string before the tables or
+in a template, or a string never closed; the lines of the other tables are skipped, a multi-line string there up to
+its closing delimiter, so nothing inside a value is read), a template without a source or listed twice, a template
+name that is none or that the fingerprint cannot hold, a version in a lock before format 8, a version or a commit
+that is none, or whose lock or agent files name something that is no plain word, while no later commit has a setup
+the collector can read ("What becomes a line"): the line names the commit and says to fix it in a new one. A
+transcript with a line that is
 no JSON record, lacks what a record must carry, or is longer than 8 MiB is left out whole and counted on stderr; so is
 a run whose file name
 holds no agent id or whose `.meta.json` is no JSON object, and a transcript that is no plain file (a folder, a pipe).
