@@ -4,8 +4,9 @@
 #   .claude/agents/<role>.md the front matter's `model` and `effort`
 # A commit gives one of three: a fingerprint, `absent` (no lock: the project was not on the templates), or a
 # `problem` (a lock or an agent file the collector cannot read). A problem refuses the collection only when a
-# line would need that setup (lines.jq), so an old commit never blocks a project.
-# Pure; needs format.jq. Read from the bottom (setup) up.
+# line would need that setup (lines.jq), and only until a later commit has a setup without one (with_fixes_noted),
+# so an old commit never blocks a project.
+# Pure; needs format.jq. Read from the bottom (with_fixes_noted, setup) up.
 # Adding a lock format: docs/metrics-format.md of the template library, "Adding a lock format".
 
 def lock_version: "6";
@@ -71,11 +72,22 @@ def fingerprint($lock; $agents):
       efforts: ($roles | map({key: .role, value: .effort}) | from_entries)
     };
 
+# What a person can do about a setup with a problem: its commit cannot change, a later one can fix the files.
+def problem_advice: "fix it in a new commit: what ran under this one is then counted on stderr, not written";
+
 # The setup of one commit. $lock is null when the commit has no lock; $agents lists {role, text}, one per agent
 # file. A problem names the commit and the file's place, never a value read from them.
 def setup($commit; $since; $lock; $agents):
   {kind: "setup", commit: $commit, since: $since}
   + if $lock == null then {absent: true}
     else try {fingerprint: fingerprint($lock; $agents)}
-      catch {problem: "the setup at commit \($commit): \(.)"}
+      catch {problem: "the setup at commit \($commit): \(.); \(problem_advice)"}
     end;
+
+# The setups of a project (the input, newest first), each with a problem marked `fixed_later` when a newer one has
+# none: what ran under it can never be written and no person can change that commit, so it is counted instead of
+# refusing every collection for as long as its transcripts last.
+def with_fixes_noted:
+  . as $setups
+  | to_entries
+  | map(.value + if .value.problem and any($setups[:.key][]; .problem == null) then {fixed_later: true} else {} end);

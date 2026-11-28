@@ -125,6 +125,65 @@ test_a_git_environment_of_the_caller_does_not_change_which_repository_is_read() 
   assert_prints '' git -C decoy status --porcelain --untracked-files=all
 }
 
+# catches: a metrics folder the collector may not write met with the shell's own line before the error line (a
+# place printed as it is), instead of one refusal.
+test_a_metrics_folder_the_collector_may_not_write_is_refused_in_one_line() {
+  ((EUID != 0)) || skip_test "root may write in a folder without write permission"
+  started_project one-setup
+  transcripts finished-run
+  trap 'chmod u+w project/ctxm/metrics' EXIT
+  chmod a-w "$METRICS"
+  collect
+  assert_prints 1 cat status
+  assert_prints 'error: the collector may not write in ctxm/metrics/; let it write there, ctxm/metrics/ is its only'\
+' place; nothing was written' cat stderr
+  assert_prints start metrics_files
+}
+
+# catches: a folder named like a new file of a killed collector stopping every collection with rm's own words:
+# the collector makes no folder there, so it is none of its files and is left alone.
+test_a_folder_named_like_a_killed_collectors_new_file_is_left_alone() {
+  local dead
+  started_project one-setup
+  transcripts finished-run
+  sleep 0 &
+  dead=$!
+  wait "$dead"
+  mkdir "$METRICS/tasks.csv.new.$dead"
+  collected
+  assert_prints '' cat stderr
+  assert_prints "counted.csv
+start
+tasks.csv
+tasks.csv.new.$dead" metrics_files
+}
+
+# catches: a folder under the collector's own working name for a file (a process of the same number made it) met
+# with rm's or the shell's own words, or a write half done.
+test_a_folder_under_the_collectors_own_working_name_is_refused_and_nothing_written() {
+  local pid
+  started_project one-setup
+  transcripts finished-run
+  run_collector_after_a_folder_under_its_working_name
+  pid="$(<collector-pid)"
+  assert_prints 1 cat status
+  assert_prints "error: ctxm/metrics/tasks.csv.new.$pid is a folder where the collector keeps a working file;\
+ remove it; nothing was written" cat stderr
+  assert_prints "start
+tasks.csv.new.$pid" metrics_files
+}
+
+# Runs the collector with a folder made under its working name for tasks.csv, by the shell that becomes it, so of its
+# process id, noted in ./collector-pid; ./stdout, ./stderr and ./status as run_collector leaves them.
+run_collector_after_a_folder_under_its_working_name() {
+  local status=0
+  # shellcheck disable=SC2016 # the $ names are the inner shell's
+  in_collector_environment bash -c 'mkdir "$1/tasks.csv.new.$$"; printf "%s\n" "$$" >collector-pid; exec "${@:2}"' \
+    _ "$METRICS" "$COLLECTOR" --project "$PWD/project" --transcripts "$PWD/transcripts" >stdout 2>stderr \
+    || status=$?
+  printf '%s\n' "$status" >status
+}
+
 # Runs the collector as a git hook would: with the variables of another repository.
 run_collector_with_git_variables() {
   local status=0

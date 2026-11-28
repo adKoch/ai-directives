@@ -108,4 +108,32 @@ test_a_run_at_a_commit_without_the_lock_is_counted_and_not_written() {
   assert_prints 'note: runs and parts of main sessions at a commit without .ctxm/, not written: 2' cat stderr
 }
 
+# catches: one agent file the collector cannot read stopping every later collection while its runs' transcripts
+# last, though a later commit fixed it: the runs and sessions after the fix would never be written.
+test_what_ran_under_a_setup_a_later_commit_fixed_is_counted_and_the_rest_written() {
+  started_project effort-fixed-later
+  transcripts session-across-template-update
+  collected
+  assert_prints '' line_fields f0000000000000001 task
+  assert_prints 'REQ-900-5B-after-the-update,high' line_fields f0000000000000002 task effort
+  assert_prints '12,120,12000,1200' line_fields ffffffff-0000-4000-8000-000000000001 "${TOKENS[@]}"
+  assert_prints "note: runs and parts of main sessions under a setup the collector cannot read that a later commit\
+ fixed, never written: 2" cat stderr
+}
+
+# catches: a setup the collector cannot read let through because an earlier commit of the project was fine: only a
+# later commit fixes it, and until then the collection is refused.
+test_a_setup_the_collector_cannot_read_after_a_fine_one_is_still_refused() {
+  local commit
+  started_project effort-broken-later
+  transcripts session-across-template-update
+  commit="$(git -C project rev-parse HEAD)"
+  collect
+  assert_prints 1 cat status
+  assert_prints "error: the setup at commit $commit: an agent file of .claude/agents/ names an effort that is no plain\
+ word; fix it in a new commit: what ran under this one is then counted on stderr, not written; nothing was written" \
+    cat stderr
+  assert_prints start ls "$METRICS"
+}
+
 run_tests

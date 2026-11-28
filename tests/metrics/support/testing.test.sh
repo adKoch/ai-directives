@@ -49,4 +49,21 @@ TEST_FILE
   assert_prints '2 1' cat report
 }
 
+# catches: a skip read back from what a test prints: a test that prints a line like a skip's shown as skipped, and a
+# skip inside `$(…)` that ends only the substitution while the test goes on and passes.
+test_only_skip_test_itself_marks_a_test_skipped_and_never_from_inside_a_substitution() {
+  local status=0 misuse="skip_test ends only the test itself: call it outside \$(…) and pipelines"
+  cat >skipping.test.sh <<TEST_FILE
+source "$SUPPORT/testing.sh"
+test_a_test_that_prints_a_line_like_a_skip() { printf 'skipped: synthetic reason\n'; }
+test_a_test_that_skips_inside_a_substitution() { local reason; reason="\$(skip_test "synthetic reason")"; }
+run_tests
+TEST_FILE
+  bash skipping.test.sh >output 2>&1 || status=$?
+  assert_equal "$status" 1
+  assert_prints '["  ok      a test that prints a line like a skip",'\
+'"  FAILED  a test that skips inside a substitution"]' result_lines output
+  assert_prints "$misuse" grep '^skip_test' output
+}
+
 run_tests

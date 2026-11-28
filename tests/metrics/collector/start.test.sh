@@ -93,6 +93,21 @@ test_a_start_record_with_a_payload_or_a_time_to_come_is_refused() {
   done
 }
 
+# catches: a start record of any size read whole into the collector and given to jq as an argument: a large one
+# would end it with the system's words, a larger one fill its memory.
+test_a_start_record_larger_than_one_time_is_refused_before_it_is_read() {
+  started_project one-setup
+  transcripts finished-run
+  printf '2026-01-01T00:00:00Z%065d\n' 0 >"$METRICS/start"
+  cp "$METRICS/start" start.before
+  collect
+  assert_prints 1 cat status
+  assert_prints 'error: ctxm/metrics/start is larger than the collector reads (64 bytes); restore it from git;'\
+' nothing was written' cat stderr
+  assert_same_content "$METRICS/start" start.before
+  assert_prints '?? ctxm/metrics/start' written_files
+}
+
 # catches: a dry run that starts the metrics, or makes ctxm/metrics/ on the way.
 test_a_dry_run_at_the_first_collection_creates_nothing() {
   project one-setup

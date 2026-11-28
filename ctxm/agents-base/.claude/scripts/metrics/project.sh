@@ -34,6 +34,13 @@ forget_inherited_repository() {
   done
 }
 
+# Sets PROJECT_NAME, or ends the collector when the folder's name is no plain name.
+name_project() {
+  PROJECT_NAME="$(project_name)"
+  [[ -n "$PROJECT_NAME" ]] || refuse "the project folder's name is no plain name, so no line can name the project"
+  readonly PROJECT_NAME
+}
+
 # Prints the project's name, its main checkout's folder name, or nothing when that is no plain name.
 project_name() {
   # shellcheck disable=SC2016 # $name is jq's

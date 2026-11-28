@@ -1,0 +1,29 @@
+{
+  "about": "A project whose inspector file names an effort that is no plain word (upper case), fixed by a commit at minute 30: built with the epoch of the shape `session-across-template-update.json`, the session's first run and first calls stand under the setup the collector cannot read, the rest under the fixed one.",
+  "commits": [
+    {
+      "minute": -1440,
+      "lock": {
+        "version": 6,
+        "templates": [
+          {"name": "agents-base", "commit": "1111111111111111111111111111111111111111"}
+        ]
+      },
+      "agents": [
+        {"name": "inspector", "description": "synthetic-text inspector", "model": "claude-synthetic-small", "effort": "High"}
+      ]
+    },
+    {
+      "minute": 30,
+      "lock": {
+        "version": 6,
+        "templates": [
+          {"name": "agents-base", "commit": "1111111111111111111111111111111111111111"}
+        ]
+      },
+      "agents": [
+        {"name": "inspector", "description": "synthetic-text inspector", "model": "claude-synthetic-small", "effort": "high"}
+      ]
+    }
+  ]
+}

@@ -41,7 +41,10 @@ collector of this checkout of the library writes it back byte for byte from the 
 comparison reads the roll-up's figures, gives them to the collector's own `rollup_text`, and compares. So nothing
 but numbers, times, checked names and the collector's fixed words is ever taken from another project, and a roll-up
 written by an earlier collector, in a layout that has changed since, is refused until the project is collected again
-with the current templates. `tasks.csv`, `start` and every other file of the folder are not read.
+with the current templates (a project collected before `counted.csv` existed starts its metrics again first:
+`docs/metrics-format.md`, "Starting again"). `tasks.csv`, `start` and every other file of the folder are not read,
+so the form of a roll-up is checked and its numbers are not: a number changed by hand in a roll-up is shown as it
+stands ("Known limits").
 
 ## What it shows
 - **Setups**: a setup is what made a roll-up: its project (as given, and as the collector named it) and its
@@ -93,4 +96,9 @@ before it reads anything. Tested with bash 5.3.9, jq 1.8.2 and coreutils 9.11, f
 - A file is checked where it stands, then read: a file swapped for a link between the two is read through the link.
   What it reads is still shown only when it is a roll-up the collector writes.
 - The comparison reads the roll-up layout of the library checkout it runs from: compare with the library's version
-  the projects were collected with, or collect them again.
+  the projects were collected with, or collect them again (a project collected before `counted.csv` existed:
+  `docs/metrics-format.md`, "Starting again").
+- A roll-up is taken when it is in the collector's form; its numbers are never checked against the project's
+  `tasks.csv`, which the comparison does not read. A number changed by hand in a roll-up, in the form the collector
+  writes, is shown as changed. The collector writes every roll-up anew from `tasks.csv` at each collection, so
+  collecting the project again puts it right.

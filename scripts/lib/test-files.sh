@@ -6,6 +6,7 @@
 readonly TEST_FILES=(
   scripts/lib/tests/check.test.sh
   scripts/lib/tests/hidden-characters.test.sh
+  scripts/lib/tests/lint.test.sh
   scripts/lib/tests/test-files.test.sh
   tests/metrics/support/project.test.sh
   tests/metrics/support/testing.test.sh
@@ -19,6 +20,7 @@ readonly TEST_FILES=(
   tests/metrics/collector/start.test.sh
   tests/metrics/collector/store.test.sh
   tests/metrics/collector/text.test.sh
+  tests/metrics/compare/earlier-collections.test.sh
   tests/metrics/compare/help.test.sh
   tests/metrics/compare/output.test.sh
   tests/metrics/compare/refusals.test.sh
@@ -74,4 +76,12 @@ run_test_file() {
   [[ -s "$report" ]] && return
   printf 'error: %s ended before it ran its tests; it must end with run_tests\n' "${file#"$REPO_ROOT"/}" >&2
   return 1
+}
+
+# Prints the test step's last line: how many files and tests ran, and how many of the tests were skipped where they
+# could not check what they are for, when any was.
+tests_summary() {
+  local file_count=$1 test_count=$2 skipped_count=$3 note=''
+  ((skipped_count == 0)) || note=", $skipped_count of them skipped (see the test lines)"
+  printf '%s test files, %s tests passed%s\n' "$file_count" "$test_count" "$note"
 }

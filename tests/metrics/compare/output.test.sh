@@ -6,8 +6,6 @@ source "$(dirname "${BASH_SOURCE[0]}")/comparing.sh"
 # shellcheck source=../../../scripts/lib/hidden-characters.sh
 source "$REPO_ROOT/scripts/lib/hidden-characters.sh"
 
-# What the comparison calls, but jq; sleep is the budget's (scripts/lib/budget.sh).
-readonly TOOLS_BUT_JQ=(bash dirname basename wc timeout sleep)
 readonly RULES_FAILED='the rules of the comparison (scripts/compare/ and those of the collector, run by jq) failed,'\
 ' so nothing is shown; check that this library checkout is whole and that jq is the version README.md (Tools) names'
 readonly NOT_WRITTEN="the text could not be written to stdout; give it a place to write that takes the whole text"
@@ -33,12 +31,8 @@ test_a_comparison_that_cannot_write_its_text_ends_with_its_line() {
 # catches: a jq that fails ending the comparison with jq's own status and words, which may quote what it read,
 # instead of exit 1 and one line.
 test_a_jq_that_fails_ends_the_comparison_with_one_line() {
-  local tool
   rolled_up_project alpha one-setup
-  mkdir tools
-  for tool in "${TOOLS_BUT_JQ[@]}"; do
-    ln -s "$(command -v "$tool")" "tools/$tool"
-  done
+  link_the_tools_but jq
   printf '#!%s\nprintf "jq: error: synthetic-text\\n" >&2\nexit 5\n' "$(command -v bash)" >tools/jq
   chmod +x tools/jq
   COMPARISON_PATH="$PWD/tools" compare alpha/project

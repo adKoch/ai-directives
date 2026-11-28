@@ -48,7 +48,8 @@ def in_step_with($lines):
 def unless_one_without_the_other($tasks_text):
   if (. == "") == ($tasks_text == "") then .
   elif . == "" then refuse("ctxm/metrics/tasks.csv is there without \(record_file), the record of what its lines" +
-    " counted; restore both from git")
+    " counted; restore both from git, or, for a tasks.csv collected before the record existed, start the metrics" +
+    " again (docs/metrics-format.md of the template library, Starting again)")
   else refuse("\(record_file) is there without ctxm/metrics/tasks.csv; restore both from git")
   end;
 

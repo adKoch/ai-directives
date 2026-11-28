@@ -77,7 +77,8 @@ test_a_lock_in_another_format_is_refused_naming_the_file() {
   commit="$(git -C project rev-parse HEAD)"
   collect
   assert_refused "$ONLY_THE_START" "the setup at commit $commit: .ctxm/ctxm.lock is not in the lock format" \
-    "ctxm 0.7 writes (version 6); nothing was written"
+    "ctxm 0.7 writes (version 6); fix it in a new commit: what ran under this one is then counted on stderr, not" \
+    "written; nothing was written"
 }
 
 # catches: a control character from an agent file copied into a line of tasks.csv.
@@ -88,7 +89,8 @@ test_an_effort_with_a_control_character_is_refused() {
   commit="$(git -C project rev-parse HEAD)"
   collect
   assert_refused "$ONLY_THE_START" "the setup at commit $commit: an agent file of .claude/agents/ names an effort" \
-    "that is no plain word; nothing was written"
+    "that is no plain word; fix it in a new commit: what ran under this one is then counted on stderr, not written;" \
+    "nothing was written"
 }
 
 # catches: a collection stopped at its last step that leaves half a file, or the file it was preparing.

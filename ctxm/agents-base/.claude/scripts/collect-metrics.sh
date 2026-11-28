@@ -37,13 +37,15 @@ source "$METRICS_SCRIPTS/transcripts.sh"
 source "$METRICS_SCRIPTS/plans.sh"
 # shellcheck source=metrics/store.sh
 source "$METRICS_SCRIPTS/store.sh"
+# shellcheck source=metrics/places.sh
+source "$METRICS_SCRIPTS/places.sh"
 # shellcheck source=metrics/leftovers.sh
 source "$METRICS_SCRIPTS/leftovers.sh"
 # shellcheck source=metrics/telling.sh
 source "$METRICS_SCRIPTS/telling.sh"
 
 # The rules of a collection, each after the ones it needs (program.sh).
-readonly PLAN_MODULES="format counted events report holdings rollup rollup_text lines"
+readonly PLAN_MODULES="format setup counted events report holdings rollup rollup_text lines"
 readonly USAGE='usage: collect-metrics.sh [--dry-run] [--project <folder>] [--transcripts <folder>]'
 DRY_RUN=no
 PROJECT_FOLDER=.
@@ -58,7 +60,7 @@ main() {
   forget_inherited_repository
   find_project "$PROJECT_FOLDER"
   refuse_unsafe_store
-  refuse_oversized_lines_files
+  refuse_oversized_files
   refuse_unsettled_files
   refuse_linked_sources
   find_transcripts
@@ -89,13 +91,6 @@ find_transcripts() {
   [[ -d "$TRANSCRIPTS_FOLDER" ]] || refuse "no transcripts folder where it was looked for; name it with --transcripts"
   refuse_linked_transcripts "$TRANSCRIPTS_FOLDER"
   readonly TRANSCRIPTS_FOLDER
-}
-
-# Sets PROJECT_NAME, or ends the collector when the folder's name is no plain name.
-name_project() {
-  PROJECT_NAME="$(project_name)"
-  [[ -n "$PROJECT_NAME" ]] || refuse "the project folder's name is no plain name, so no line can name the project"
-  readonly PROJECT_NAME
 }
 
 read_arguments() {
@@ -149,7 +144,7 @@ store_collection() {
   for ((index = 0; index < count; index++)); do
     refuse_unsafe_rollup "$(plan_part ".rollups[$index].plan" "$plan")"
   done
-  remove_abandoned_files
+  begin_write
   for ((index = 0; index < count; index++)); do
     name="$(plan_part ".rollups[$index].plan" "$plan")"
     prepare_file "$METRICS_FOLDER/$name.md" "$(plan_part ".rollups[$index].content" "$plan")"

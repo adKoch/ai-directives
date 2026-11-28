@@ -17,9 +17,11 @@ Nothing else is written, anywhere. A collection writes its files all or nothing.
 its place (`<file>.new.<process id>`) and keeps each file it replaces under a second name (`<file>.old.<process
 id>`, a hard link) before it renames the first one into place. A collection that is interrupted (INT, TERM, HUP) or
 fails after some renames puts every old file back and removes the new ones it had placed, so `ctxm/metrics/` holds
-what it held before, byte for byte. Once the last rename is done the write is whole, and a signal no longer stops
-the collector: it ends with 0. If putting a file back fails too, that file's old bytes stay in its
-`<file>.old.<process id>`, which the one `error:` line names.
+what it held before, byte for byte. The shell acts on a signal only between two commands, so a signal that arrives
+while the last rename runs is acted on when it returns, and still puts every old file back: exit 1. Once the
+collector has gone past the last rename, the write is whole and a signal no longer stops it: it ends with 0. If
+putting a file back fails too, that file's old bytes stay in its `<file>.old.<process id>`, which the one `error:`
+line names.
 
 A collection never removes an old file another collector kept: while the folder holds a `<file>.old.<process id>`
 of a process that is gone, where `<file>` is one of the collector's own (`start`, `tasks.csv`, `counted.csv` or
@@ -29,10 +31,12 @@ process gone or not. Two cases leave one. A failed put-back of a place that had 
 file (a place that was new has none: remove its new file, as the line says). A kill no program can catch
 (`SIGKILL`, a power cut) between two renames: each file renamed before it is new, with its old file beside it, and
 the others are old. Move each old file back over its file (the record's at least: a record ahead of `tasks.csv` is
-refused as out of step); the next collection then finds the lines `tasks.csv` lacks again and rewrites every
-roll-up from them, so the mix heals. A file of the folder that is none of these (another setup's roll-up, written
-by its own importer, or a file named like an old or a new file that is none of the collector's own) is never read,
-changed or removed. The only files the next collection removes are the new files a killed collector left
+refused as out of step); an old file beside a file that was not renamed yet is that same file (a hard link, so `mv`
+refuses it as the same file): remove it. The next collection then finds the lines `tasks.csv` lacks again and
+rewrites every roll-up from them, so the mix heals. A file of the folder that is none of these (another setup's
+roll-up, written by its own importer, or a file named like an old or a new file that is none of the collector's own)
+is never read, changed or removed, and nor is a folder named like a new file: the collector makes no folder there.
+The only files the next collection removes are the new files a killed collector left
 (`<own file>.new.<process id>`, the process gone). The files hold numbers, times, ids, the fixed words and names
 that fit the patterns below: no prompt, file or report text.
 
@@ -83,7 +87,7 @@ A value read from outside the collector is checked before use; one that does not
 |---|---|---|
 | task name | a request id with up to two prefixes (`REQ-004`, `AD-REQ-009`) or a release version (`v0.8`), then 1 to 8 parts of 1 to 24 letters and digits, joined by `-`; 80 characters at most | the run is counted and not written |
 | role, model | a plain word: letters, digits and `-` (a model also `.`, `_`, `:`, `[`, `]`) | the run or the part is counted and not written |
-| model, effort in an agent file; template name, library commit in the lock | plain words; 40 or 64 hex digits for a commit | the collection is refused when a line needs that setup |
+| model, effort in an agent file; template name, library commit in the lock | plain words; 40 or 64 hex digits for a commit | the collection is refused when a line needs that setup, until a later commit has a setup the collector can read ("What becomes a line") |
 | session id, agent id, time | their id shapes | the transcript is counted as not read whole |
 | API call id (`message.id`), compaction id (`uuid`) | a letter or a digit, then up to 127 letters, digits, `_` and `-`; a uuid (8-4-4-4-12 lowercase hex digits) for a compaction id | the transcript is counted as not read whole |
 | Findings line | the last line of the run's report (the `message` of its last handback call, else its last text; "Key names read from a transcript"), exactly `Findings: <n> blocking, <m> nits`, each count 1 to 9 digits | the run is written with `none` in both columns; a last line that opens with `Findings:` and is none of the format is counted on stderr, and nothing of it is kept |
@@ -114,7 +118,10 @@ spreadsheet formula.
   before the start, and what the fork copied is counted in the fork's line; otherwise it is never written through a copy.
 - **The setup in force** at a time is the project's state at the newest commit of the checked out branch, not
   later than that time, that changed `.ctxm/ctxm.lock` or `.claude/agents/`. A run or a part of a session at a
-  commit without `.ctxm/ctxm.lock` is counted on stderr and not written.
+  commit without `.ctxm/ctxm.lock` is counted on stderr and not written. A setup the collector cannot read (its lock
+  or an agent file, "What a value may look like") refuses the collection while a line needs it; once a later commit
+  has a setup it can read, the commit cannot be changed and nothing more can be done for it, so a run or a part of a
+  session under it is counted on stderr and never written, and the refusal says so.
 - **The start.** The first collection writes `ctxm/metrics/start` and no line. From then on a run is written only
   if its last record is later than the start, and a main session only if its last record is: such a session is
   counted whole, its calls from before the start included, but for what the record holds as passed over. With
@@ -206,27 +213,42 @@ The collector exits 1 with one `error:` line and writes nothing when, at the fir
 a required tool is missing; the project folder is not the top of the project's main checkout (a subfolder, a
 linked worktree) or its name is no plain name; the transcripts folder is missing or holds a symbolic link on the
 way to a transcript; `ctxm/plans` or `ctxm/releases` is a symbolic link; `ctxm`, `ctxm/metrics`, `start`,
-`tasks.csv` or `counted.csv` is a symbolic link, or not a folder or a plain file, or (the last two) is larger
-than 16 MiB (16777216 bytes); `ctxm/metrics` holds an old file that a collector that is gone kept ("Files"). A
+`tasks.csv` or `counted.csv` is a symbolic link, or not a folder or a plain file, or larger than the collector reads
+(`start` 64 bytes, the other two 16 MiB, 16777216 bytes); `ctxm/metrics` holds an old file that a collector that is
+gone kept ("Files"). A collection that writes (a dry run does not) also when the collector may not write in
+`ctxm/metrics/` (before it is there, in `ctxm/` or the project folder), or a folder stands under the name this
+collector would prepare or keep one of its files under (`<file>.new.<process id>` or `<file>.old.<process id>`). A
 later collection also when: `tasks.csv` or `counted.csv` is empty (0 bytes) while the other is not, which the
 collector never writes (an empty file beside an empty or missing one reads as a missing one, so the lines and the
 record are written anew); a roll-up's place (`ctxm/metrics/<plan>.md`) is a symbolic link or no plain file;
 `start` holds anything but one past time;
 `tasks.csv` has a header that is none of the format's (an earlier header of it, the first 17 columns, is read, and the
 file moved to the current header with `unknown` in the columns added since; a cut after any other number of columns
-is refused) or a line that is none of the format; `tasks.csv` is there without `counted.csv`, or `counted.csv`
-without `tasks.csv`; `counted.csv` has another header, a row that is none of the format ("The record") or names an
-event twice, or is out of step with `tasks.csv` (a row names a line that is no main session's line there, or a
-main session's line has no row): each naming the file, never rebuilt from the transcripts, which would count again
-what the copies of a deleted original hold; a line needs a setup whose lock is not in the format ctxm 0.7
-writes (`version = 6`) or whose lock or agent files name something that is no plain word. A transcript with a line
-that is no JSON record, lacks what a record must carry, or is longer than 8 MiB is left out whole and counted on
-stderr; so is a run whose file name holds no agent id or whose `.meta.json` is no JSON object, and a transcript
-that is no plain file (a folder, a pipe). A step that fails without a refusal of its own (a full disk, a read-only
-folder) ends the collector the same way: exit 1, one `error:` line, nothing half-written (a failing rename after
-others puts the old files back, "Files"), and so does an interrupt (INT, TERM, HUP) before the last rename. Only
+is refused) or a line that is none of the format; `tasks.csv` is there without `counted.csv` (a project collected
+before the record existed too: "Starting again"), or `counted.csv` without `tasks.csv`; `counted.csv` has another
+header, a row that is none of the format ("The record") or names an event twice, or is out of step with `tasks.csv`
+(a row names a line that is no main session's line there, or a main session's line has no row): each naming the
+file, never rebuilt from the transcripts, which would count again what the copies of a deleted original hold; a line
+needs a setup whose lock is not in the format ctxm 0.7 writes (`version = 6`) or whose lock or agent files name
+something that is no plain word, while no later commit has a setup the collector can read ("What becomes a line"):
+the line names the commit and says to fix it in a new one. A transcript with a line that is no JSON record, lacks
+what a record must carry, or is longer than 8 MiB is left out whole and counted on stderr; so is a run whose file name
+holds no agent id or whose `.meta.json` is no JSON object, and a transcript that is no plain file (a folder, a pipe).
+A step that fails without a refusal of its own (a full disk) ends the collector the same way: exit 1, one `error:`
+line, nothing half-written (a failing rename after others puts the old files back, "Files"), and so does an
+interrupt (INT, TERM, HUP) before the collector has gone past the last rename ("Files"). Only
 when putting a file back fails too is a file left new: the line then names it and where its old bytes are. A
 closed stdout loses only the result: the collection is done, exit 0.
+
+## Starting again
+A project collected before `counted.csv` existed holds `tasks.csv` without it, and roll-ups in an earlier layout.
+The collector refuses it, as a `tasks.csv` whose record is lost, and the comparison refuses its roll-ups. Nothing
+moves it to the current format: the record cannot be rebuilt from the transcripts without counting again what the
+copies of a deleted original hold. Either keep its numbers where they are, and compare them with the comparison of
+the library commit the project was collected with (`docs/compare-setups.md`, "Known limits"); or start its metrics
+again: move `ctxm/metrics/` out of the project (its committed files stay in git's history), then run the collector.
+That collection is a first one ("What becomes a line", "The start"): it writes a new `start` and nothing older, so
+what ended before it is in no new line or roll-up.
 
 ## Tools
 The templates ship no toolchain. The collector needs these from the project's own, on the `PATH`, and checks for
