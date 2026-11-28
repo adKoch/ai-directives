@@ -41,10 +41,10 @@ plan_facts() (
 )
 
 # Answers whether a file is no longer than a plan may be, from its size alone: wc counts a plain file's bytes
-# without reading them.
+# without reading them. A file wc cannot count is not within the limit: it is left out, never read.
 is_within_plan_limit() {
   local size
-  size="$(wc -c <"$1")"
+  size="$(size_in_bytes "$1")" || return 1
   ((size <= PLAN_LIMIT_BYTES))
 }
 

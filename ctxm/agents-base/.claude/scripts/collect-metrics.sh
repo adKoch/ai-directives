@@ -45,7 +45,7 @@ source "$METRICS_SCRIPTS/leftovers.sh"
 source "$METRICS_SCRIPTS/telling.sh"
 
 # The rules of a collection, each after the ones it needs (program.sh).
-readonly PLAN_MODULES="format setup counted events report holdings rollup rollup_text lines"
+readonly PLAN_MODULES="format lock_strings setup counted events report holdings rollup rollup_text lines"
 readonly USAGE='usage: collect-metrics.sh [--dry-run] [--project <folder>] [--transcripts <folder>]'
 DRY_RUN=no
 PROJECT_FOLDER=.
@@ -136,17 +136,17 @@ collect() {
 
 # Writes the added lines, their record and the roll-ups together, all or nothing (store.sh): every place is checked
 # and every file prepared before the first is renamed, and a stop before the last rename puts the old files back.
-# Whether the collector may write is checked only when there is something to write.
+# Whether the collector may write is checked only when the collection writes something (planned_writes).
 # tasks.csv is renamed last, just after its record: a kill that cuts the renames off (no trap runs) leaves it old,
 # and its record new: the old files the kill left stop every collection until a person moves them back (store.sh).
 store_collection() {
-  local plan=$1 count index name
+  local plan=$1 count index name writes
   count="$(plan_part '.rollups | length' "$plan")"
   for ((index = 0; index < count; index++)); do
     refuse_unsafe_rollup "$(plan_part ".rollups[$index].plan" "$plan")"
   done
-  [[ "$(plan_part '(.rollups | length) > 0 or .counted != null' "$plan")" != true ]] || refuse_unwritable_store
-  remove_abandoned_files
+  writes="$(planned_writes "$plan")"
+  [[ "$writes" == nothing ]] || begin_write
   for ((index = 0; index < count; index++)); do
     name="$(plan_part ".rollups[$index].plan" "$plan")"
     prepare_file "$METRICS_FOLDER/$name.md" "$(plan_part ".rollups[$index].content" "$plan")"
@@ -156,6 +156,16 @@ store_collection() {
     prepare_file "$TASKS_FILE" "$(plan_part .content "$plan")"
   fi
   publish_prepared
+}
+
+# Prints `something` when the collection writes: a line, a record or a roll-up to prepare, or a file a killed
+# collector left to remove (leftovers.sh); else `nothing`. Only a collection that writes needs a folder it may write
+# in. A step that fails here ends the collector: it never reads as nothing to write.
+planned_writes() {
+  local files leftovers
+  files="$(plan_part '(.rollups | length) > 0 or .counted != null' "$1")"
+  leftovers="$(abandoned_file_names)"
+  if [[ "$files" == true || -n "$leftovers" ]]; then echo something; else echo nothing; fi
 }
 
 # Prints the plan of the collection (lines.jq), from the facts of the project and of its transcripts, and what
@@ -179,14 +189,6 @@ collection_facts() {
   session_facts "$folder"
   run_facts "$folder" " $(written_agents) "
   rollup_facts
-}
-
-# Prints the agent ids of the runs that have their line, on one line. A tasks.csv that cannot be read gives none
-# here: the plan refuses it.
-written_agents() {
-  has_stored "$TASKS_FILE" || return 0
-  metrics_jq format '[written_lines[] | select(.role != main_role) | .agent] | join(" ")' \
-    --raw-input --slurp --raw-output "$PROJECT/$TASKS_FILE" 2>/dev/null || true
 }
 
 # Prints a part of the plan as text.

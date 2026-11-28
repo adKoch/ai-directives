@@ -66,4 +66,42 @@ test_a_collection_with_nothing_to_write_passes_in_a_metrics_folder_it_may_not_wr
   assert_prints 'ctxm/metrics/tasks.csv: lines added: 0 (of runs: 0, of main sessions: 0)' cat stdout
 }
 
+# catches: a collection with only a file a killed collector left to remove (a removal is a write) met with rm's own
+# words in a metrics folder it may not write, instead of one refusal; or the file removed anyway.
+test_a_leftover_file_in_a_metrics_folder_the_collector_may_not_write_is_refused_in_one_line() {
+  local dead
+  started_project one-setup
+  transcripts finished-run
+  collected
+  sleep 0 &
+  dead=$!
+  wait "$dead"
+  printf 'x\n' >"$METRICS/tasks.csv.new.$dead"
+  lock_folder "$METRICS"
+  collect
+  assert_refused_for_writing_in ctxm/metrics/
+  assert_prints "tasks.csv.new.$dead" ls "$METRICS" --ignore=start --ignore=tasks.csv --ignore=counted.csv
+}
+
+# catches: the words of a tool that failed on a file printed with the project's path as it is: a control character in
+# the path would reach the terminal.
+test_a_tool_that_fails_on_a_file_has_its_words_escaped() {
+  started_project one-setup
+  transcripts finished-run
+  collected
+  mkdir $'odd\e'
+  mv project $'odd\e/project'
+  mkdir tools
+  ln -s "$COLLECTOR_TESTS/standins/failing-wc.sh" tools/wc
+  PATH="$PWD/tools:$PATH" run_collector --project "$PWD/"$'odd\e/project' --transcripts "$PWD/transcripts"
+  assert_prints 1 cat status
+  assert_prints '' cat stdout
+  assert_prints 0 count_lines_with_raw_escape_in_stderr
+  assert_prints "wc: $PWD/odd\\u{1b}/project/ctxm/metrics/start: Permission denied" head -n 1 stderr
+}
+
+count_lines_with_raw_escape_in_stderr() {
+  jq --raw-input --null-input '[inputs | select(test("\u001b"))] | length' stderr
+}
+
 run_tests

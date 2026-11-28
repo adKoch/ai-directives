@@ -43,8 +43,32 @@ def is_agent_id: matches("[0-9a-z]{1,64}") and (is_fixed_word | not);
 def is_call_id: matches("[A-Za-z0-9][A-Za-z0-9_-]{0,127}");
 def is_record_id: is_session_id;
 def is_project_name: matches("[A-Za-z0-9][A-Za-z0-9._-]{0,63}") and (is_fixed_word | not);
-def is_template_name: matches("[a-z0-9][a-z0-9-]{0,63}");
-def is_library_commit: matches("[0-9a-f]{40}([0-9a-f]{24})?");
+# A template's name as ctxm checks it (check_relative, check_storable): a relative `/` path without a backslash or a
+# control character, no part empty, `.`, `..` or `.git` in any case, none ending in `.` or a space.
+def is_template_name:
+  type == "string" and (explode | any(. < 32 or . == 127 or . == 92) | not) and (test("\\A[A-Za-z]:") | not)
+  and (split("/") | all(. != "" and . != "." and . != ".." and (endswith(".") or endswith(" ") | not)
+    and ascii_downcase != ".git"));
+# A name the fingerprint can hold: a field of tasks.csv, without `@` and `+`, the marks between its parts.
+def is_fingerprint_name: matches("[A-Za-z0-9][A-Za-z0-9./-]*");
+# Lock format 8, as ctxm checks it (is_commit_id, is_full_commit_id): a commit pin names 4 to 40 hex digits, a release
+# its full commit id; either case. A lock before format 8 is read by the same rule, as ctxm 0.8 reads it.
+def is_released_commit: matches("[0-9a-fA-F]{40}");
+def is_pinned_commit: matches("[0-9a-fA-F]{4,40}");
+# The library a template is read from, as ctxm checks it: printable ASCII without spaces.
+def is_template_source: matches("[!-~]+");
+# A released version of a template, by ctxm's grammar (Version::parse): at most 64 letters, digits, `.` and `-`; two
+# or three numbers, each a u32 without a leading zero; then, after the first `-`, an optional suffix of dotted parts,
+# none empty, that does not end in `.lock` in any case. It never holds `@`, the mark that separates it from the name
+# and the commit in the fingerprint.
+def is_version_number: matches("0|[1-9][0-9]{0,9}") and tonumber <= 4294967295;
+def is_version_suffix: length > 0 and (split(".") | all(length > 0)) and (ascii_downcase | endswith(".lock") | not);
+def version_parts: (index("-") // null) as $dash | if $dash == null then [., null] else [.[:$dash], .[$dash + 1:]] end;
+def is_template_version:
+  matches("[A-Za-z0-9.-]{1,64}")
+  and (version_parts as [$numbers, $suffix]
+    | ($numbers | split(".") | (length == 2 or length == 3) and all(is_version_number))
+    and ($suffix == null or ($suffix | is_version_suffix)));
 # A plan is a file of ctxm/plans/, its roll-up ctxm/metrics/<plan>.md: letters and digits in parts joined by one `.`,
 # `_` or `-`, so the name holds no `..`, no `/` and no leading dot.
 def is_plan_name: matches("[A-Za-z0-9]+([._-][A-Za-z0-9]+){0,15}") and length <= 64;

@@ -35,12 +35,12 @@ refuse_oversized_files() {
 }
 
 refuse_larger_than() {
-  local limit=$1 place bytes
+  local limit=$1 place size
   shift
   for place in "$@"; do
     has_stored "$place" || continue
-    bytes="$(wc -c <"$PROJECT/$place")"
-    ((bytes <= limit)) || refuse "$place is larger than the collector reads ($limit bytes); restore it from git;" \
+    size="$(size_in_bytes "$PROJECT/$place")"
+    ((size <= limit)) || refuse "$place is larger than the collector reads ($limit bytes); restore it from git;" \
       "nothing was written"
   done
 }

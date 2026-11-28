@@ -8,8 +8,8 @@
 # second name, then all are renamed into place; a collection stopped or failing before the last rename puts back
 # every file it had replaced (end_collector). Nothing here follows a symbolic link: a link on the way would let a
 # write land outside the project.
-# Sourced by collect-metrics.sh; needs PROJECT (project.sh), the checks of places.sh and remove_abandoned_files
-# (leftovers.sh).
+# Sourced by collect-metrics.sh; needs PROJECT (project.sh), the checks of places.sh, remove_abandoned_files
+# (leftovers.sh) and metrics_jq (program.sh).
 
 readonly METRICS_FOLDER=ctxm/metrics
 # shellcheck disable=SC2034 # TASKS_FILE and COUNTED_FILE are read by places.sh, telling.sh and collect-metrics.sh
@@ -33,6 +33,14 @@ stored_start() {
   printf '%s\n' "$(<"$PROJECT/$START_FILE")"
 }
 
+# Prints the agent ids of the runs that have their line, on one line. A tasks.csv that cannot be read gives none
+# here: the plan refuses it.
+written_agents() {
+  has_stored "$TASKS_FILE" || return 0
+  metrics_jq format '[written_lines[] | select(.role != main_role) | .agent] | join(" ")' \
+    --raw-input --slurp --raw-output "$PROJECT/$TASKS_FILE" 2>/dev/null || true
+}
+
 # Replaces a file of ctxm/metrics/ with the content, whole or not at all.
 store() {
   begin_write
@@ -52,10 +60,10 @@ begin_write() {
 prepare_file() {
   local place="$PROJECT/$1"
   refuse_folder_in_the_way "$1"
-  mkdir -p -- "$PROJECT/$METRICS_FOLDER"
-  rm -f -- "$(prepared_name "$place")"
+  run_escaped mkdir -p -- "$PROJECT/$METRICS_FOLDER"
+  run_escaped rm -f -- "$(prepared_name "$place")"
   PREPARED_PLACES+=("$place")
-  write_new_file "$(prepared_name "$place")" "$2"
+  run_escaped write_new_file "$(prepared_name "$place")" "$2"
 }
 
 prepared_name() {

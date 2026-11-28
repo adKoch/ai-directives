@@ -60,7 +60,7 @@ In this order; the header is the names joined by commas. A column is only ever a
 | `model` | the model of the line's API calls; several are joined by `+`; `unknown` when the line has no call |
 | `effort` | the effort the role's agent file names in the line's setup; `unknown` when it names none, and for `main` |
 | `project` | the name of the project's main checkout folder |
-| `templates` | the applied templates, each as `<name>@<library commit>`, joined by `+`; `none` when the lock lists none |
+| `templates` | the applied templates, each as `<name>@<commit>` when it is pinned to a library commit, or `<name>@<version>@<commit>` when it is pinned to a released version (lock format 8), joined by `+`; `none` when the lock lists none. A lock before format 8 gives each template its one commit and no version, so a line written before 0.8 keeps its form. The commit is written in lowercase |
 | `roles` | each role's model and effort as the agent files name them, `<role>=<model>/<effort>`, joined by `+`; an agent file is a file of `.claude/agents/` that opens with front matter (`---`) |
 | `blocking` | the first count of the `Findings:` line a run's report ends with; `none` when it ends with none, or with one that is no line of the format, and on a main session's line; `unknown` on a line written before the column existed |
 | `nits` | the second count of that line, under the same words |
@@ -68,8 +68,8 @@ In this order; the header is the names joined by commas. A column is only ever a
 The four kinds of tokens are never added together. `project`, `templates` and `roles` are the setup's
 fingerprint: two lines with the same three were made by the same setup. `templates` keeps the order the lock lists
 the templates in, which is the order they were applied in, and a later template wins over an earlier one: the same
-templates in another order are another setup. (`roles` is sorted: the agent files have no order.) Times are UTC,
-to the second, as `2026-01-05T09:00:00Z`.
+templates in another order are another setup, and so is a template at another version or commit. (`roles` is sorted:
+the agent files have no order.) Times are UTC, to the second, as `2026-01-05T09:00:00Z`.
 
 ## Fixed words
 | Word | Means |
@@ -87,7 +87,7 @@ A value read from outside the collector is checked before use; one that does not
 |---|---|---|
 | task name | a request id with up to two prefixes (`REQ-004`, `AD-REQ-009`) or a release version (`v0.8`), then 1 to 8 parts of 1 to 24 letters and digits, joined by `-`; 80 characters at most | the run is counted and not written |
 | role, model | a plain word: letters, digits and `-` (a model also `.`, `_`, `:`, `[`, `]`) | the run or the part is counted and not written |
-| model, effort in an agent file; template name, library commit in the lock | plain words; 40 or 64 hex digits for a commit | the collection is refused when a line needs that setup, until a later commit has a setup the collector can read ("What becomes a line") |
+| model, effort in an agent file; template name, version, library commit in the lock | plain words; a version as ctxm reads it (`wiki/pages/core/library/versions/README.md` of ctxm): `x.y` or `x.y.z`, each number a u32 without a leading zero, then an optional `-` suffix of letters, digits, `-` and dotted parts, none empty, not ending in `.lock` in any case (64 characters at most, no `@`); a commit is 40 hex digits for a version pin and 4 to 40 for a commit pin, either case, in every format, as ctxm 0.8 reads it; a template names its source (printable ASCII, no space) and is listed once; its name is one ctxm accepts (a relative `/` path: no part empty, `.`, `..` or `.git`, none ending in `.` or a space) that the fingerprint can hold (letters, digits, `.`, `-` and `/`, starting with a letter or a digit) | the collection is refused when a line needs that setup, until a later commit has a setup the collector can read ("What becomes a line") |
 | session id, agent id, time | their id shapes | the transcript is counted as not read whole |
 | API call id (`message.id`), compaction id (`uuid`) | a letter or a digit, then up to 127 letters, digits, `_` and `-`; a uuid (8-4-4-4-12 lowercase hex digits) for a compaction id | the transcript is counted as not read whole |
 | Findings line | the last line of the run's report (the `message` of its last handback call, else its last text; "Key names read from a transcript"), exactly `Findings: <n> blocking, <m> nits`, each count 1 to 9 digits | the run is written with `none` in both columns; a last line that opens with `Findings:` and is none of the format is counted on stderr, and nothing of it is kept |
@@ -230,10 +230,19 @@ before the record existed too: "Starting again"), or `counted.csv` without `task
 header, a row that is none of the format ("The record") or names an event twice, or is out of step with `tasks.csv`
 (a row names a line that is no main session's line there, or a main session's line has no row): each naming the
 file, never rebuilt from the transcripts, which would count again what the copies of a deleted original hold; a line
-needs a setup whose lock is not in the format ctxm 0.7 writes (`version = 6`) or whose lock or agent files name
-something that is no plain word, while no later commit has a setup the collector can read ("What becomes a line"):
-the line names the commit and says to fix it in a new one. A transcript with a line that is no JSON record, lacks
-what a record must carry, or is longer than 8 MiB is left out whole and counted on stderr; so is a run whose file name
+needs a setup whose lock is not in a format the collector reads (`version = 6` to `8`), holds a line the collector
+does not read (it reads only the lines ctxm writes: a table header other than `[[templates]]`, `[[files]]`,
+`[values]` and `[defaults]` exactly, a line before the first table other than `version = <n>`, `folders = [...]` and
+`files = []`, a line of a template other than `name`, `source`, `version` or `commit = "<value>"` with no indent,
+quoted key, escape or comment after it, a key or the format given twice, a multi-line string before the tables or
+in a template, or a string never closed; the lines of the other tables are skipped, a multi-line string there up to
+its closing delimiter, so nothing inside a value is read), a template without a source or listed twice, a template
+name that is none or that the fingerprint cannot hold, a version in a lock before format 8, a version or a commit
+that is none, or whose lock or agent files name something that is no plain word, while no later commit has a setup
+the collector can read ("What becomes a line"): the line names the commit and says to fix it in a new one. A
+transcript with a line that is
+no JSON record, lacks what a record must carry, or is longer than 8 MiB is left out whole and counted on stderr; so is
+a run whose file name
 holds no agent id or whose `.meta.json` is no JSON object, and a transcript that is no plain file (a folder, a pipe).
 A step that fails without a refusal of its own (a full disk) ends the collector the same way: exit 1, one `error:`
 line, nothing half-written (a failing rename after others puts the old files back, "Files"), and so does an

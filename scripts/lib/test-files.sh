@@ -13,9 +13,12 @@ readonly TEST_FILES=(
   tests/metrics/collector/copies.test.sh
   tests/metrics/collector/empty-files.test.sh
   tests/metrics/collector/format.test.sh
+  tests/metrics/collector/lock-formats.test.sh
+  tests/metrics/collector/lock-lines.test.sh
   tests/metrics/collector/permissions.test.sh
   tests/metrics/collector/record.test.sh
   tests/metrics/collector/refusals.test.sh
+  tests/metrics/collector/rendered-locks.test.sh
   tests/metrics/collector/runs.test.sh
   tests/metrics/collector/sessions.test.sh
   tests/metrics/collector/start.test.sh

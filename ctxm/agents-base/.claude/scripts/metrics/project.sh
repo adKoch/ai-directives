@@ -63,7 +63,7 @@ project_setups() {
 setup_at_commit() {
   local commit=$1 since=$2
   # shellcheck disable=SC2016 # $commit and $since are jq's
-  setup_files_at "$commit" | metrics_jq "format setup" '
+  setup_files_at "$commit" | metrics_jq "format lock_strings setup" '
     [inputs] as $files
     | setup($commit; $since; $files | map(.lock // empty) | .[0]; $files | map(select(has("role"))))
   ' --null-input --compact-output --arg commit "$commit" --argjson since "$since"
