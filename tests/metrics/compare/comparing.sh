@@ -17,6 +17,9 @@ readonly ROLLUP_FILE=ctxm/metrics/REQ-900.md
 readonly COMPARISON_OUTPUT=(stdout stderr status files-before checkout-before)
 # The comparison's TMPDIR: a folder of the test's own, so a temporary file it left would show in files_state.
 readonly TEMPORARY_FOLDER=temporary
+# What the comparison calls (sleep is the budget's, scripts/lib/budget.sh); a test may leave one off its PATH
+# (link_the_tools_but).
+readonly COMPARISON_TOOLS=(bash dirname basename wc timeout sleep jq)
 
 # Builds <folder>/project from a history, with its metrics started at the time (default: before the plan), the plan
 # REQ-900 and the runs of reviewed-items (rolling.sh), and collects it: the collector writes its roll-up REQ-900.md.
@@ -86,6 +89,16 @@ compare_into_a_full_device() {
   note_what_was_there
   in_comparison_environment "$@" >/dev/full 2>stderr || status=$?
   printf '%s\n' "$status" >status
+}
+
+# Makes ./tools a PATH with every tool of the comparison but the one named.
+link_the_tools_but() {
+  local tool
+  rm -rf tools
+  mkdir tools
+  for tool in "${COMPARISON_TOOLS[@]}"; do
+    [[ "$tool" == "$1" ]] || ln -s "$(command -v "$tool")" "tools/$tool"
+  done
 }
 
 in_comparison_environment() {

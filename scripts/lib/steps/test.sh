@@ -25,12 +25,7 @@ main() {
     fi
   done
   ((failed == 0)) || die "$failed of ${#TEST_FILES[@]} test files failed"
-  printf '%s test files, %s tests passed%s\n' "${#TEST_FILES[@]}" "$tests" "$(skipped_note "$skipped")"
-}
-
-# Prints what the summary says of the tests skipped: nothing when none was.
-skipped_note() {
-  (($1 == 0)) || printf ', %s of them skipped (see the test lines)' "$1"
+  tests_summary "${#TEST_FILES[@]}" "$tests" "$skipped"
 }
 
 main

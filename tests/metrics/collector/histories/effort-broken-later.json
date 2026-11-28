@@ -1,0 +1,29 @@
+{
+  "about": "A project whose inspector file is fine until a commit at minute 30 gives it an effort that is no plain word (upper case): built with the epoch of the shape `session-across-template-update.json`, the session's second run and last calls stand under the setup the collector cannot read.",
+  "commits": [
+    {
+      "minute": -1440,
+      "lock": {
+        "version": 6,
+        "templates": [
+          {"name": "agents-base", "commit": "1111111111111111111111111111111111111111"}
+        ]
+      },
+      "agents": [
+        {"name": "inspector", "description": "synthetic-text inspector", "model": "claude-synthetic-small", "effort": "high"}
+      ]
+    },
+    {
+      "minute": 30,
+      "lock": {
+        "version": 6,
+        "templates": [
+          {"name": "agents-base", "commit": "1111111111111111111111111111111111111111"}
+        ]
+      },
+      "agents": [
+        {"name": "inspector", "description": "synthetic-text inspector", "model": "claude-synthetic-small", "effort": "High"}
+      ]
+    }
+  ]
+}

@@ -37,13 +37,15 @@ source "$METRICS_SCRIPTS/transcripts.sh"
 source "$METRICS_SCRIPTS/plans.sh"
 # shellcheck source=metrics/store.sh
 source "$METRICS_SCRIPTS/store.sh"
+# shellcheck source=metrics/places.sh
+source "$METRICS_SCRIPTS/places.sh"
 # shellcheck source=metrics/leftovers.sh
 source "$METRICS_SCRIPTS/leftovers.sh"
 # shellcheck source=metrics/telling.sh
 source "$METRICS_SCRIPTS/telling.sh"
 
 # The rules of a collection, each after the ones it needs (program.sh).
-readonly PLAN_MODULES="format counted events report holdings rollup rollup_text lines"
+readonly PLAN_MODULES="format setup counted events report holdings rollup rollup_text lines"
 readonly USAGE='usage: collect-metrics.sh [--dry-run] [--project <folder>] [--transcripts <folder>]'
 DRY_RUN=no
 PROJECT_FOLDER=.
@@ -58,7 +60,7 @@ main() {
   forget_inherited_repository
   find_project "$PROJECT_FOLDER"
   refuse_unsafe_store
-  refuse_oversized_lines_files
+  refuse_oversized_files
   refuse_unsettled_files
   refuse_linked_sources
   find_transcripts
@@ -89,13 +91,6 @@ find_transcripts() {
   [[ -d "$TRANSCRIPTS_FOLDER" ]] || refuse "no transcripts folder where it was looked for; name it with --transcripts"
   refuse_linked_transcripts "$TRANSCRIPTS_FOLDER"
   readonly TRANSCRIPTS_FOLDER
-}
-
-# Sets PROJECT_NAME, or ends the collector when the folder's name is no plain name.
-name_project() {
-  PROJECT_NAME="$(project_name)"
-  [[ -n "$PROJECT_NAME" ]] || refuse "the project folder's name is no plain name, so no line can name the project"
-  readonly PROJECT_NAME
 }
 
 read_arguments() {
@@ -141,6 +136,7 @@ collect() {
 
 # Writes the added lines, their record and the roll-ups together, all or nothing (store.sh): every place is checked
 # and every file prepared before the first is renamed, and a stop before the last rename puts the old files back.
+# Whether the collector may write is checked only when there is something to write.
 # tasks.csv is renamed last, just after its record: a kill that cuts the renames off (no trap runs) leaves it old,
 # and its record new: the old files the kill left stop every collection until a person moves them back (store.sh).
 store_collection() {
@@ -149,6 +145,7 @@ store_collection() {
   for ((index = 0; index < count; index++)); do
     refuse_unsafe_rollup "$(plan_part ".rollups[$index].plan" "$plan")"
   done
+  [[ "$(plan_part '(.rollups | length) > 0 or .counted != null' "$plan")" != true ]] || refuse_unwritable_store
   remove_abandoned_files
   for ((index = 0; index < count; index++)); do
     name="$(plan_part ".rollups[$index].plan" "$plan")"

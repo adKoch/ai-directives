@@ -8,13 +8,15 @@
 # (tools.sh).
 
 # Removes the new files a killed collector left, when that process is gone; the files of a collector that still runs
-# are never touched, nor any old file kept (refuse_unsettled_files). Called once per write, before its first file is
-# prepared.
+# are never touched, nor any old file kept (refuse_unsettled_files), nor a folder: the collector makes none there, so
+# a folder of such a name is none of its files. Called once per collection that is no dry run, before its first file
+# is prepared.
 remove_abandoned_files() {
-  local names name
+  local names name path
   names="$(left_by_gone_collectors new)"
   while IFS= read -r name; do
-    [[ -z "$name" ]] || rm -f -- "$PROJECT/$METRICS_FOLDER/$name"
+    path="$PROJECT/$METRICS_FOLDER/$name"
+    [[ -z "$name" ]] || [[ -d "$path" && ! -L "$path" ]] || rm -f -- "$path"
   done <<<"$names"
 }
 

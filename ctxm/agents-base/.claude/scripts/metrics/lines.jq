@@ -2,8 +2,8 @@
 # closed main session. The rules are in docs/metrics-format.md of the template library ("What becomes a line").
 # The input of `plan` lists the facts: the project's setups (setup.jq, newest first) and one entry per transcript
 # (facts.jq) with its `kind` ("run" with its `agent`, `finished` and `role`, or "session").
-# Pure; needs format.jq, counted.jq, events.jq, report.jq, holdings.jq, rollup.jq and rollup_text.jq. Read from the
-# bottom (plan) up.
+# Pure; needs format.jq, setup.jq, counted.jq, events.jq, report.jq, holdings.jq, rollup.jq and rollup_text.jq.
+# Read from the bottom (plan) up.
 
 # The setup in force at a time, from the setups, newest first.
 def setup_at($time): first(.[] | select(.since <= $time)) // {absent: true};
@@ -30,6 +30,7 @@ def fingerprint_of($setup): {project, templates: $setup.fingerprint.templates, r
 # What becomes of a run or a part of a session under its setup: a line, or the reason there is none.
 def under($setup; line):
   if $setup.absent then {skipped: "no_setup"}
+  elif $setup.fixed_later then {skipped: "fixed_later"}
   elif $setup.problem then {refused: $setup.problem}
   else {line: line}
   end;
@@ -146,7 +147,7 @@ def collection($facts; $settings):
       project: $settings.project,
       now: $settings.now,
       start: ($settings.start | start_seconds($settings.now)),
-      setups: ($facts | facts_of("setup")),
+      setups: ($facts | facts_of("setup") | with_fixes_noted),
       transcripts: $transcripts,
       last: ($transcripts | last_records),
       counted: ($settings.counted | counted_events($settings.written; $written)),

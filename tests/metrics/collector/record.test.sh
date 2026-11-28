@@ -45,7 +45,8 @@ test_lines_without_their_record_or_a_record_without_its_lines_are_refused() {
   keep_metrics
   collect
   assert_refused_unchanged 'ctxm/metrics/tasks.csv is there without ctxm/metrics/counted.csv, the record of what its' \
-    'lines counted; restore both from git; nothing was written'
+    'lines counted; restore both from git, or, for a tasks.csv collected before the record existed, start the' \
+    'metrics again (docs/metrics-format.md of the template library, Starting again); nothing was written'
   mv record.csv "$RECORD"
   mv "$METRICS/tasks.csv" lines.csv
   keep_metrics

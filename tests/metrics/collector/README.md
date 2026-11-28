@@ -17,8 +17,8 @@ page says how it is built, how it is tested and how to extend it.
 7. `metrics/setup.jq` and `metrics/project.sh`: a commit's lock and agent files become a fingerprint.
 8. `metrics/rollup.jq` and `metrics/rollup_text.jq`, from the bottom up: lines, commits and plans become a roll-up
    and its text.
-9. `metrics/plans.sh`, `metrics/rollup_facts.jq`, `metrics/transcripts.sh`, `metrics/store.sh`, `metrics/leftovers.sh`, `metrics/tools.sh`,
-   `metrics/program.sh`, `metrics/telling.sh`: the edges.
+9. `metrics/plans.sh`, `metrics/rollup_facts.jq`, `metrics/transcripts.sh`, `metrics/store.sh`, `metrics/places.sh`,
+   `metrics/leftovers.sh`, `metrics/tools.sh`, `metrics/program.sh`, `metrics/telling.sh`: the edges.
 10. `collecting.sh`, then `runs.test.sh`: how a test is written; `copies.test.sh` for a case in both id orders;
     `../rollup/rolling.sh` and `figures.test.sh` for a roll-up.
 
@@ -26,7 +26,7 @@ page says how it is built, how it is tested and how to extend it.
 | Layer | Files | Does |
 |---|---|---|
 | Entry | `collect-metrics.sh` | reads the options, checks the tools, wires the ports to the rules, prints; decides nothing |
-| Ports (bash) | `project.sh` (git, read-only), `transcripts.sh` (the transcripts folder, read-only), `plans.sh` (the plans, the commits' subjects and the release candidates, read-only), `store.sh` (`ctxm/metrics/`, the only writer, `tasks.csv` and its record `counted.csv` included), `tools.sh` (the tool requirement), `telling.sh` (what the collector prints) | every effect; each turns what it reads into JSON facts or text for the rules |
+| Ports (bash) | `project.sh` (git, read-only), `transcripts.sh` (the transcripts folder, read-only), `plans.sh` (the plans, the commits' subjects and the release candidates, read-only), `store.sh` (`ctxm/metrics/`, the only writer, `tasks.csv` and its record `counted.csv` included), `places.sh` (the checks of what stands in `ctxm/metrics/` before a read or a write), `tools.sh` (the tool requirement), `telling.sh` (what the collector prints) | every effect; each turns what it reads into JSON facts or text for the rules |
 | Rules (jq, pure) | `format.jq`, `facts.jq`, `setup.jq`, `counted.jq`, `events.jq`, `holdings.jq`, `lines.jq`, `report.jq`, `rollup.jq`, `rollup_text.jq`, `rollup_facts.jq` | every decision; they read their input and arguments and write nothing |
 | The seam | `program.sh`: `metrics_jq "<modules>" '<filter>' <jq options>` | joins the named modules into one program, in the order given |
 

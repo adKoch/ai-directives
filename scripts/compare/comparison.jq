@@ -16,7 +16,9 @@ def unnamed_refusal:
 
 def unread_refusal:
   "is no roll-up in the format of the collector (docs/metrics-format.md, The roll-ups):"
-  + " collect the project again with the current templates, or move the file out of the folder";
+  + " collect the project again with the current templates (a project collected before ctxm/metrics/counted.csv"
+  + " existed starts its metrics again first: docs/metrics-format.md, Starting again), or move the file out of the"
+  + " folder";
 
 # A roll-up fact, read: {project, rollup}; a file that is none is refused, naming it.
 def read_fact:

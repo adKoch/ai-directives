@@ -8,14 +8,14 @@ a fixture is copied from one: only key names and the file layout are mirrored.
 | `make-transcripts.sh <shape.json> <folder> <epoch> [<minute>]` | Claude Code's transcripts for one project, from a shape; with `<minute>`, as the files stand at that minute, so a second build with a later minute lets them grow |
 | `make-project.sh <history.json> <folder> <epoch>` | a project with a git history whose commits hold the lock ctxm writes and the agent files |
 | `shapes.jq` | a shape turned into another: `with_session_ids_reversed` gives each session the id that stands opposite its own in sort order, so one shape shows a rule in both id orders (`transcripts_in_id_order` in `../collector/collecting.sh`) |
-| `testing.sh` | a test file: `test_` functions under a `# catches:` line, `assert_prints <expected> <command>` (never `assert_… "$(command)"`, which the lint refuses: it passes when the command fails but prints the expected value), `assert_equal`, `assert_same_content`, `assert_starts_with_content`, `fail`, an empty folder per test under `.cache/tests/` |
+| `testing.sh` | a test file: `test_` functions under a `# catches:` line, `assert_prints <expected> <command>` (never `assert_… "$(command)"`, which the lint refuses: it passes when the command fails but prints the expected value), `assert_equal`, `assert_same_content`, `assert_starts_with_content`, `fail`, `skip_test <reason>` (for a test that cannot check what it is for where it runs, as one that needs a permission root ignores: it is shown and counted as skipped, never as passed; call it from the test itself, not inside `$(…)` or a pipeline), an empty folder per test under `.cache/tests/` |
 | `../fixtures/transcripts/*.json` | the shapes: one file per transcript shape, its `about` says what it holds and its token sums |
 | `../fixtures/projects/*.json` | the histories: one file per project history |
 
 `scripts/check.sh` runs every test file named in `scripts/lib/test-files.sh`; a new one is added there. The test step
 fails when a named file is missing, when a `*.test.sh` under `scripts/` or `tests/` is not named, and when a file
-ends before `run_tests` has run its tests; its summary line counts the files and the tests. A probe calls the two
-makers by hand, with a folder in the task's workspace.
+ends before `run_tests` has run its tests; its summary line counts the files and the tests, and the tests skipped when
+any was (`tests_summary`). A probe calls the two makers by hand, with a folder in the task's workspace.
 
 ## Reading order
 1. `../fixtures/transcripts/finished-run.json`: what a shape says.

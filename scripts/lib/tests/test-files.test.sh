@@ -16,4 +16,11 @@ test_a_test_file_that_never_reaches_run_tests_fails() {
     cat stderr
 }
 
+# catches: a test step whose last line, the one check.sh shows, says nothing of the tests skipped, so a run where a
+# test could not check what it is for reads as one where every test did.
+test_the_summary_counts_the_skipped_tests_and_names_none_when_none_was() {
+  assert_prints '24 test files, 150 tests passed, 2 of them skipped (see the test lines)' tests_summary 24 150 2
+  assert_prints '24 test files, 150 tests passed' tests_summary 24 150 0
+}
+
 run_tests

@@ -6,11 +6,10 @@
 # shellcheck source=comparing.sh
 source "$(dirname "${BASH_SOURCE[0]}")/comparing.sh"
 
-# What the comparison calls, without jq.
-readonly TOOLS_WITHOUT_JQ=(bash dirname basename wc timeout sleep)
 readonly ROLLUP=alpha/project/$ROLLUP_FILE
 readonly NOT_READ='is no roll-up in the format of the collector (docs/metrics-format.md, The roll-ups): collect the'\
-' project again with the current templates, or move the file out of the folder'
+' project again with the current templates (a project collected before ctxm/metrics/counted.csv existed starts'\
+' its metrics again first: docs/metrics-format.md, Starting again), or move the file out of the folder'
 readonly UNNAMED='is no roll-up: its name is no plan name, and ctxm/metrics/ holds no other .md file; move it out of'\
 ' the folder'
 readonly UNREADABLE='could not be read; let the comparison read it, or move it out of the folder'
@@ -32,16 +31,17 @@ assert_nothing_raw_got_out() {
   [[ "$said" != *synthetic-text* ]] || fail "text of a roll-up was printed"
 }
 
-# catches: a comparison that reads although a required tool is missing, or whose line no longer names the tool.
-test_without_jq_the_comparison_names_it_and_reads_nothing() {
-  local tool
+# catches: a comparison that reads although a required tool is missing, or whose line no longer names the tool; without
+# sleep, one that runs with its time budget unkept and the shell's line for each missing sleep.
+test_without_jq_or_sleep_the_comparison_names_the_tool_and_reads_nothing() {
+  local missing
   rolled_up_project alpha one-setup
-  mkdir tools
-  for tool in "${TOOLS_WITHOUT_JQ[@]}"; do
-    ln -s "$(command -v "$tool")" "tools/$tool"
+  for missing in jq sleep; do
+    link_the_tools_but "$missing"
+    COMPARISON_PATH="$PWD/tools" compare alpha/project
+    assert_refused "scripts/compare-setups.sh needs $missing: not on the PATH; README.md (Tools) lists the tools to" \
+      "provide"
   done
-  COMPARISON_PATH="$PWD/tools" compare alpha/project
-  assert_refused 'scripts/compare-setups.sh needs jq: not on the PATH; README.md (Tools) lists the tools to provide'
 }
 
 # catches: a roll-up taken although its text is not what the collector writes: a control character, a link or a

@@ -8,14 +8,14 @@
 # second name, then all are renamed into place; a collection stopped or failing before the last rename puts back
 # every file it had replaced (end_collector). Nothing here follows a symbolic link: a link on the way would let a
 # write land outside the project.
-# Sourced by collect-metrics.sh; needs PROJECT (project.sh) and refuse (tools.sh).
+# Sourced by collect-metrics.sh; needs PROJECT (project.sh), the checks of places.sh and remove_abandoned_files
+# (leftovers.sh).
 
 readonly METRICS_FOLDER=ctxm/metrics
+# shellcheck disable=SC2034 # TASKS_FILE and COUNTED_FILE are read by places.sh, telling.sh and collect-metrics.sh
 readonly START_FILE=$METRICS_FOLDER/start TASKS_FILE=$METRICS_FOLDER/tasks.csv
+# shellcheck disable=SC2034 # read by places.sh and collect-metrics.sh
 readonly COUNTED_FILE=$METRICS_FOLDER/counted.csv
-# tasks.csv and its record are read whole, so a larger file is refused: both are committed files another tool or a
-# person may edit.
-readonly LINES_LIMIT_BYTES=16777216
 # The places a write is prepared for, in the order they are renamed into; empty when no write is under way.
 PREPARED_PLACES=()
 # The places whose rename has begun, so whose old file must be put back if the write stops before its end. A place
@@ -23,46 +23,6 @@ PREPARED_PLACES=()
 RENAMED_PLACES=()
 # The places a stopped write could not put back: each keeps its old file (`<file>.old.<process id>`) for good.
 UNRESTORED_PLACES=()
-
-# Ends the collector when a symbolic link, or anything but a folder or a plain file, stands where the collector
-# reads and writes.
-refuse_unsafe_store() {
-  local place
-  for place in ctxm "$METRICS_FOLDER" "$START_FILE" "$TASKS_FILE" "$COUNTED_FILE"; do
-    [[ ! -L "$PROJECT/$place" ]] || refuse "$place is a symbolic link: the collector writes only the project's own" \
-      "$METRICS_FOLDER/; remove the link; nothing was written"
-  done
-  for place in ctxm "$METRICS_FOLDER"; do
-    [[ ! -e "$PROJECT/$place" || -d "$PROJECT/$place" ]] || refuse "$place is no folder; nothing was written"
-  done
-  for place in "$START_FILE" "$TASKS_FILE" "$COUNTED_FILE"; do
-    [[ ! -e "$PROJECT/$place" || -f "$PROJECT/$place" ]] || refuse "$place is no plain file; nothing was written"
-  done
-}
-
-# Ends the collector when tasks.csv or its record is larger than the collector reads.
-refuse_oversized_lines_files() {
-  local place bytes
-  for place in "$TASKS_FILE" "$COUNTED_FILE"; do
-    has_stored "$place" || continue
-    bytes="$(wc -c <"$PROJECT/$place")"
-    ((bytes <= LINES_LIMIT_BYTES)) || refuse "$place is larger than the collector reads ($LINES_LIMIT_BYTES bytes);" \
-      "restore it from git; nothing was written"
-  done
-}
-
-# Ends a later collection when tasks.csv or its record is empty (0 bytes) while the other is full: one of the two
-# was lost, and the collector never writes an empty one. Beside an empty or missing partner, an empty file reads as
-# a missing one (counted.jq), as it always has; the first collection reads neither.
-refuse_lone_empty_lines_file() {
-  refuse_empty_beside_full "$TASKS_FILE" "$COUNTED_FILE"
-  refuse_empty_beside_full "$COUNTED_FILE" "$TASKS_FILE"
-}
-
-refuse_empty_beside_full() {
-  has_stored "$1" && [[ ! -s "$PROJECT/$1" && -s "$PROJECT/$2" ]] || return 0
-  refuse "$1 is empty (0 bytes); restore it from git; nothing was written"
-}
 
 has_stored() {
   [[ -f "$PROJECT/$1" ]]
@@ -75,15 +35,23 @@ stored_start() {
 
 # Replaces a file of ctxm/metrics/ with the content, whole or not at all.
 store() {
-  remove_abandoned_files
+  begin_write
   prepare_file "$1" "$2"
   publish_prepared
+}
+
+# Starts a write, before its first file is prepared: ends the collector when it may not write where the files go
+# (places.sh), and removes the new files a killed collector left (leftovers.sh).
+begin_write() {
+  refuse_unwritable_store
+  remove_abandoned_files
 }
 
 # Prepares the new content of a file under a name of this collector's own, so a second collector at the same time
 # can neither remove it nor rename it into place. Nothing is replaced before publish_prepared.
 prepare_file() {
   local place="$PROJECT/$1"
+  refuse_folder_in_the_way "$1"
   mkdir -p -- "$PROJECT/$METRICS_FOLDER"
   rm -f -- "$(prepared_name "$place")"
   PREPARED_PLACES+=("$place")
@@ -99,8 +67,8 @@ kept_name() {
 }
 
 # Renames every prepared file into place, the last step of a collection: the old files are kept first, and dropped
-# only once every rename is done. From the last rename on, the write is whole: a signal no longer stops the
-# collector, so it never reports as stopped a collection that wrote everything.
+# only once every rename is done. A signal during the last rename is acted on when it returns, and puts the old
+# files back; once the collector has gone past the renames, the write is whole and no signal stops it.
 publish_prepared() {
   local place
   keep_old_files
@@ -167,13 +135,4 @@ is_unrestored() {
     [[ "$place" != "$1" ]] || return 0
   done
   return 1
-}
-
-# Ends the collector when a roll-up's place is a symbolic link or anything but a plain file: a write there would
-# land outside the project, or inside a folder.
-refuse_unsafe_rollup() {
-  local place="$METRICS_FOLDER/$1.md"
-  [[ ! -L "$PROJECT/$place" ]] || refuse "$place is a symbolic link: the collector writes only the project's own" \
-    "$METRICS_FOLDER/; remove the link; nothing was written"
-  [[ ! -e "$PROJECT/$place" || -f "$PROJECT/$place" ]] || refuse "$place is no plain file; nothing was written"
 }

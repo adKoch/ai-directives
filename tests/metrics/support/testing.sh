@@ -19,8 +19,6 @@ readonly SUPPORT="$REPO_ROOT/tests/metrics/support" FIXTURES="$REPO_ROOT/tests/m
 # environment, so a test file that a test runs reports to nobody.
 readonly TEST_REPORT="${LIBRARY_TEST_REPORT:-}"
 unset LIBRARY_TEST_REPORT
-# What starts the line of a skipped test in its output (skip_test).
-readonly SKIPPED_MARK="skipped: "
 
 # Runs every `test_` function of the file that called it, prints one line per test (and a failed test's output),
 # reports how many ran and how many of them were skipped, and ends the file with 1 when a test failed, or when the
@@ -51,28 +49,39 @@ declared_tests() {
 }
 
 # Adds a failed test to FAILED_TESTS, a skipped one to SKIPPED_TESTS. The test is a command of its own, in no `||` or
-# `if`, and so is every call on the way to it: only so does errexit hold inside the test.
+# `if`, and so is every call on the way to it: only so does errexit hold inside the test. Beside its folder it leaves
+# its output (`<folder>.output`), when it skipped its reason (`<folder>.skipped`), and when it called skip_test where
+# that cannot end it, a mark (`<folder>.misused`, skip_test): channels of their own, so no line the test prints, and
+# no status a test masks, decides how it ended.
 run_test() {
   local name=$1 folder="$SCRATCH_ROOT/$1" status outcome
   mkdir "$folder"
+  SKIP_REASON_FILE="$folder.skipped" SKIP_MISUSE_FILE="$folder.misused"
   set +e
   (
     set -e
-    cd "$folder"
+    enter_test_shell "$folder"
     "$name"
   ) >"$folder.output" 2>&1
   status=$?
   set -e
-  outcome="$(outcome_of "$status" "$folder.output")"
+  outcome="$(outcome_of "$status" "$folder")"
   count_outcome "$outcome"
-  print_outcome "$name" "$outcome" "$folder.output"
+  print_outcome "$name" "$outcome" "$folder"
 }
 
-# Prints how a test ended, from its status and its output: ok, skipped (skip_test) or FAILED.
+# Makes the shell that runs a test its own: notes the shell, so skip_test can tell it from a part of the test, and
+# moves into the test's folder.
+enter_test_shell() {
+  TEST_SHELL=$BASHPID
+  cd "$1"
+}
+
+# Prints how a test ended, from its status and the files it left beside its folder: ok, skipped (skip_test) or FAILED.
 outcome_of() {
-  if (($1 != 0)); then
+  if (($1 != 0)) || [[ -f "$2.misused" ]]; then
     printf 'FAILED\n'
-  elif grep --quiet "^$SKIPPED_MARK" "$2"; then
+  elif [[ -f "$2.skipped" ]]; then
     printf 'skipped\n'
   else
     printf 'ok\n'
@@ -88,13 +97,13 @@ count_outcome() {
 
 # Prints the line of a test: ok, skipped with the reason skip_test gave, or FAILED with the test's output.
 print_outcome() {
-  local sentence="${1#test_}" outcome=$2 output=$3
+  local sentence="${1#test_}" outcome=$2 folder=$3
   case "$outcome" in
     ok) printf '  ok      %s\n' "${sentence//_/ }" ;;
-    skipped) printf '  skipped %s: %s\n' "${sentence//_/ }" "$(sed -n "s/^$SKIPPED_MARK//p" "$output")" ;;
+    skipped) printf '  skipped %s: %s\n' "${sentence//_/ }" "$(<"$folder.skipped")" ;;
     *)
       printf '  FAILED  %s\n' "${sentence//_/ }"
-      cat "$output"
+      cat "$folder.output"
       ;;
   esac
 }
@@ -105,9 +114,15 @@ report_tests_run() {
 }
 
 # Ends the test that calls it as passed, and has the run show it as skipped, with the reason: for a test that cannot
-# check what it is for where it runs.
+# check what it is for where it runs. Called inside `$(…)` or a pipeline it could end only that part, and the test
+# would go on, its status perhaps masked (`local x="$(…)"`, `|| true`): there it marks the test failed instead.
 skip_test() {
-  printf '%s%s\n' "$SKIPPED_MARK" "$*"
+  if ((BASHPID != TEST_SHELL)); then
+    printf "skip_test ends only the test itself: call it outside \$(…) and pipelines\n" >&2
+    : >"$SKIP_MISUSE_FILE"
+    exit 1
+  fi
+  printf '%s\n' "$*" >"$SKIP_REASON_FILE"
   exit 0
 }
 

@@ -9,6 +9,10 @@ def note_texts: [
   ["open", "main sessions with a record in the last \(quiet_seconds / 60) minutes, written once they are quiet"],
   ["before_start", "runs and main sessions that ended before the project's metrics start, never written"],
   ["no_setup", "runs and parts of main sessions at a commit without .ctxm/, not written"],
+  [
+    "fixed_later",
+    "runs and parts of main sessions under a setup the collector cannot read that a later commit fixed, never written"
+  ],
   ["left_out_plans", "plan files left out: a name, a size or a kind of file that is no plan's"],
   [
     "malformed_findings",
