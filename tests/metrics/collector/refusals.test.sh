@@ -68,17 +68,17 @@ test_a_link_in_the_transcripts_folder_is_refused() {
     "the collector follows none: remove them; nothing was written"
 }
 
-# catches: a lock in a format the collector does not know read as if it were ctxm 0.7's: lines under a wrong or
-# empty list of templates.
+# catches: a lock in a format the collector does not know (a later one than any ctxm writes) read as if it were one it
+# knows: lines under a wrong or empty list of templates.
 test_a_lock_in_another_format_is_refused_naming_the_file() {
   local commit
   started_project later-lock-format
   transcripts finished-run
   commit="$(git -C project rev-parse HEAD)"
   collect
-  assert_refused "$ONLY_THE_START" "the setup at commit $commit: .ctxm/ctxm.lock is not in the lock format" \
-    "ctxm 0.7 writes (version 6); fix it in a new commit: what ran under this one is then counted on stderr, not" \
-    "written; nothing was written"
+  assert_refused "$ONLY_THE_START" "the setup at commit $commit: .ctxm/ctxm.lock is not in a lock format the" \
+    "collector reads (versions 6 to 8); fix it in a new commit: what ran under this one is then counted on stderr," \
+    "not written; nothing was written"
 }
 
 # catches: a control character from an agent file copied into a line of tasks.csv.

@@ -52,10 +52,10 @@ begin_write() {
 prepare_file() {
   local place="$PROJECT/$1"
   refuse_folder_in_the_way "$1"
-  mkdir -p -- "$PROJECT/$METRICS_FOLDER"
-  rm -f -- "$(prepared_name "$place")"
+  run_escaped mkdir -p -- "$PROJECT/$METRICS_FOLDER"
+  run_escaped rm -f -- "$(prepared_name "$place")"
   PREPARED_PLACES+=("$place")
-  write_new_file "$(prepared_name "$place")" "$2"
+  run_escaped write_new_file "$(prepared_name "$place")" "$2"
 }
 
 prepared_name() {

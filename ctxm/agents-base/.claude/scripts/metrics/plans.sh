@@ -44,7 +44,7 @@ plan_facts() (
 # without reading them.
 is_within_plan_limit() {
   local size
-  size="$(wc -c <"$1")"
+  size="$(size_in_bytes "$1")"
   ((size <= PLAN_LIMIT_BYTES))
 }
 

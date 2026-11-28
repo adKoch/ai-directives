@@ -1,0 +1,19 @@
+{
+  "about": "A project whose lock is in format 8: one template pinned to a released version, one pinned to an abbreviated library commit, one to a commit in capitals.",
+  "commits": [
+    {
+      "minute": -1440,
+      "lock": {
+        "version": 8,
+        "templates": [
+          {"name": "agents-base", "version": "2.1-a", "commit": "1111111111111111111111111111111111111111"},
+          {"name": "coding", "commit": "ABCDEF1"},
+          {"name": "docs", "commit": "2222222222222222222222222222222222222222"}
+        ]
+      },
+      "agents": [
+        {"name": "inspector", "description": "synthetic-text inspector", "model": "claude-synthetic-small", "effort": "medium"}
+      ]
+    }
+  ]
+}

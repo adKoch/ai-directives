@@ -1,35 +1,66 @@
 # The setup a project had at one commit: its fingerprint, from the lock ctxm writes and the agent files there.
-#   .ctxm/ctxm.lock          `version = 6` (the format ctxm 0.7 writes) and one [[templates]] table per applied
-#                            template, with its `name` and the library `commit` it was applied at
+#   .ctxm/ctxm.lock          `version = 6` to `8` and one [[templates]] table per applied template, with its `name`
+#                            and the library `commit` it was applied at; from format 8 also its released `version`
+#                            when the template is pinned to one (formats 6 and 7 have none)
 #   .claude/agents/<role>.md the front matter's `model` and `effort`
 # A commit gives one of three: a fingerprint, `absent` (no lock: the project was not on the templates), or a
 # `problem` (a lock or an agent file the collector cannot read). A problem refuses the collection only when a
 # line would need that setup (lines.jq), and only until a later commit has a setup without one (with_fixes_noted),
 # so an old commit never blocks a project.
 # Pure; needs format.jq. Read from the bottom (with_fixes_noted, setup) up.
-# Adding a lock format: docs/metrics-format.md of the template library, "Adding a lock format".
+# Adding a lock format: tests/metrics/collector/README.md of the template library, "Adding a lock format".
 
-def lock_version: "6";
+# The formats that pin a template to one library commit (6 is what ctxm 0.7 writes) and the one that may pin it to a
+# released version (8, ctxm 0.8). Any other is refused, a future one included.
+def commit_lock_formats: ["6", "7"];
+def version_lock_format: "8";
 def lock_file: ".ctxm/ctxm.lock";
 def agent_file: "an agent file of .claude/agents/";
 
-def table_entry: capture("^(?<key>name|commit)\\s*=\\s*\"(?<value>[^\"]*)\"\\s*$") // null;
+def table_entry: capture("^(?<key>name|version|commit)\\s*=\\s*\"(?<value>[^\"]*)\"\\s*$") // null;
+
+# A key of a template that is no well-formed entry, or is given twice, marks the template: it is refused, never read
+# as a template without that key (a missing version would pass for a commit pin).
+def add_template_key($line):
+  ($line | table_entry) as $entry
+  | if $entry == null or (.templates[-1] | has($entry.key)) then .templates[-1].malformed = true
+    else .templates[-1][$entry.key] = $entry.value
+    end;
 
 def add_lock_line($line):
   if ($line | test("^\\[\\[templates\\]\\]\\s*$")) then .table = "templates" | .templates += [{}]
   elif ($line | test("^\\[")) then .table = "another"
   elif .table == null and ($line | test("^version\\s*=")) then .version = ($line | sub("^version\\s*=\\s*"; ""))
-  elif .table == "templates" then ($line | table_entry) as $entry
-    | if $entry == null then . else .templates[-1][$entry.key] = $entry.value end
+  elif .table == "templates" and ($line | test("^(name|version|commit)\\s*=")) then add_template_key($line)
   else .
   end;
 
 # The version and the [[templates]] tables of a lock; every other table and key is skipped.
 def read_lock: reduce split("\n")[] as $line ({table: null, version: null, templates: []}; add_lock_line($line));
 
-def applied_template:
-  if (.name | is_template_name) and (.commit | is_library_commit) then "\(.name)@\(.commit)"
-  else error("\(lock_file) names a template or a library commit that is none")
+def lock_problem($what): error("\(lock_file) \($what)");
+
+# A lock before format 8: the template's one library commit, no version.
+def commit_template:
+  if .version != null then lock_problem("names a template version in a lock format that has none")
+  elif .commit | is_library_commit then "\(.name)@\(.commit)"
+  else lock_problem("names a template or a library commit that is none")
+  end;
+
+# Format 8: a version pin names its released version and the commit the release named (the full id); a commit pin
+# names a library commit, which may be abbreviated. A commit id is lowercase in the fingerprint, as git prints it.
+def version_template:
+  (.commit // "" | ascii_downcase) as $commit
+  | if .version == null then
+      if .commit | is_pinned_commit then "\(.name)@\($commit)" else lock_problem("names a library commit that is none") end
+    elif (.version | is_template_version) and (.commit | is_released_commit) then "\(.name)@\(.version)@\($commit)"
+    else lock_problem("names a template version or a library commit that is none")
+    end;
+
+def applied_template($format):
+  if .malformed or (.name | is_template_name | not) then lock_problem("names a template or a library commit that is none")
+  elif $format == version_lock_format then version_template
+  else commit_template
   end;
 
 # The order the lock lists the templates in is the order they were applied in, and a later template wins over an
@@ -38,9 +69,10 @@ def applied_order: if length == 0 then nothing else join("+") end;
 
 def applied_templates:
   read_lock
-  | if .version != lock_version
-    then error("\(lock_file) is not in the lock format ctxm 0.7 writes (version \(lock_version))")
-    else .templates | map(applied_template) | applied_order
+  | .version as $format
+  | if $format | IN(commit_lock_formats[], version_lock_format)
+    then .templates | map(applied_template($format)) | applied_order
+    else lock_problem("is not in a lock format the collector reads (versions 6 to 8)")
     end;
 
 # The lines between the first two `---` of an agent file.

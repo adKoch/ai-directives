@@ -59,7 +59,7 @@ reads the library's history.
 Test files: `runs.test.sh` (run lines), `sessions.test.sh` (main's lines, copies), `copies.test.sh` (copies,
 chains and deletions: each call once, in both id orders), `record.test.sh` (the record's refusals and its
 write), `empty-files.test.sh` (an empty `tasks.csv` or record, refused only beside a full one), `start.test.sh`
-(the start), `refusals.test.sh` (what stops a collection), `text.test.sh` (no text gets out), `format.test.sh` (the page, the headers and an earlier header), `store.test.sh` (the collector's own working
+(the start), `refusals.test.sh` (what stops a collection), `lock-formats.test.sh` (the lock formats read, and each pin refused), `permissions.test.sh` (where it may not write or read), `text.test.sh` (no text gets out), `format.test.sh` (the page, the headers and an earlier header), `store.test.sh` (the collector's own working
 files, its tools and its environment). The roll-up tests are in `../rollup/`: `figures.test.sh` (the
 figures), `refusals.test.sh` (what a roll-up refuses or leaves out) and `writing.test.sh` (roll-ups and lines all
 or nothing); `rolling.sh` adds plans and commits to a project and looks for its shapes and histories in its own
@@ -88,16 +88,23 @@ Worked example: `compactions`.
    already compares the page with the header.
 
 ## Adding a lock format
-The collector reads the lock ctxm 0.7 writes (`version = 6`) and refuses any other when a line needs that setup.
-To read another format as well:
-1. `setup.jq`: `applied_templates` decides by `.version`; add the version beside `lock_version` and a reader that
-   gives the same list, `<name>@<library commit>` per template, for the new format. Keep the refusal for every
-   version that has no reader. `read_lock` is the reader of version 6: a second format gets its own.
-2. If the fingerprint gains a part (a template's version), it is a new column: the note above.
-3. `docs/metrics-format.md`: "Refusals" and the `templates` row.
-4. A history in `histories/` with the new lock (`tests/metrics/support/project.jq` writes the lock: a new format
-   needs it extended) and a test beside `test_a_lock_in_another_format_is_refused_naming_the_file`, which stays for
-   the next unknown version (`histories/later-lock-format.json`).
+The collector reads the locks of formats 6 (ctxm 0.7), 7 and 8 (ctxm 0.8) and refuses any other when a line needs that
+setup. A lock before format 8 gives each template its commit; format 8 may add a template's released `version`
+(`setup.jq`: `commit_template`, `version_template`). To read another format as well:
+1. `setup.jq`: `applied_templates` decides by the lock's `version`; add the version to `commit_lock_formats`, or beside
+   `version_lock_format` with a reader that gives the same list for the new format. Keep the refusal for every version
+   that has no reader. `read_lock` reads only the `[[templates]]` tables' `name`, `version` and `commit` keys; a
+   line of those keys that is no well-formed entry, or a key twice, marks its template, which is refused.
+2. A new part of the fingerprint inside `templates` (as the version) changes what two lines of one setup look like: it
+   keeps the form of every line already written (a commit pin is still `<name>@<commit>`). A part that needs its own
+   column is the note above ("Adding a metric").
+3. `docs/metrics-format.md`: "Refusals", "What a value may look like" and the `templates` row. A new value gets its
+   pattern in `format.jq` first (`is_template_version`, `is_pinned_commit`).
+4. A history in `histories/` with the new lock (`tests/metrics/support/project.jq` writes the lock: a new key needs it
+   extended; `extra_lines` writes a line no ctxm would) and tests in `lock-formats.test.sh`: the fingerprint, a
+   session across the update that moves the lock, and a refusal for each input the format reads. The refusal of an
+   unknown format, `test_a_lock_in_another_format_is_refused_naming_the_file` in `refusals.test.sh`, stays for the next
+   unknown version (`histories/later-lock-format.json`): move that history's version up when a format is read.
 
 ## Adding a roll-up figure
 1. `docs/metrics-format.md`, "The roll-ups": what it is made of, and that it is `unknown` while no line, commit or file

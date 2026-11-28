@@ -18,6 +18,28 @@ refuse() {
   exit "$REFUSED_STATUS"
 }
 
+# Runs a command and prints what it said: on success its output on stdout, on failure its words on stderr, escaped
+# (escaped_text, format.jq), because they name the project's paths, which are outside text. The status is the
+# command's own. The one place a tool's words are escaped; a tool that its parent must be able to signal (mv) is not
+# run through it, as it would run in a subshell. For commands whose output is one result or none.
+run_escaped() {
+  local said status=0
+  said="$("$@" 2>&1)" || status=$?
+  if ((status == 0)); then
+    [[ -z "$said" ]] || printf '%s\n' "$said"
+  else
+    printf '%s\n' "$said" | metrics_jq format 'escaped_text' --raw-input --raw-output >&2
+  fi
+  return "$status"
+}
+
+# Prints the size of a plain file in bytes, counted without reading it into the shell; its failure words are escaped.
+size_in_bytes() {
+  local counted
+  counted="$(run_escaped wc -c -- "$1")"
+  printf '%s\n' "${counted%% *}"
+}
+
 # Ends the collector with one line naming every required tool that is missing; returns when all are there.
 require_tools() {
   local tool missing=()

@@ -1,0 +1,31 @@
+{
+  "about": "A project whose second commit is the first `ctxm update` with ctxm 0.8: the lock moves from format 6 to format 8, the library commit gives way to a pin to a released version for one template and stays a commit pin for the other. Built with the same epoch as the shape session-across-template-update, so the update falls at minute 30 inside the session.",
+  "commits": [
+    {
+      "minute": -1440,
+      "lock": {
+        "version": 6,
+        "templates": [
+          {"name": "agents-base", "commit": "1111111111111111111111111111111111111111"},
+          {"name": "coding", "commit": "1111111111111111111111111111111111111111"}
+        ]
+      },
+      "agents": [
+        {"name": "inspector", "description": "synthetic-text inspector", "model": "claude-synthetic-small", "effort": "medium"}
+      ]
+    },
+    {
+      "minute": 30,
+      "lock": {
+        "version": 8,
+        "templates": [
+          {"name": "agents-base", "version": "2.1-a", "commit": "2222222222222222222222222222222222222222"},
+          {"name": "coding", "commit": "1111111111111111111111111111111111111111"}
+        ]
+      },
+      "agents": [
+        {"name": "inspector", "description": "synthetic-text inspector", "model": "claude-synthetic-small", "effort": "medium"}
+      ]
+    }
+  ]
+}

@@ -92,7 +92,7 @@ them, by key names only.
 | Compaction | `type: system`, `subtype: compact_boundary`, `content`, `compactMetadata.trigger`, `.preTokens` | plan (`compact_boundary`), known (the rest) |
 | Session opening | `type: custom-title` with `customTitle`, `type: agent-name` with `agentName`, both with `sessionId`, neither with `uuid` or `timestamp` | plan (the two kinds), known (names) |
 | `.meta.json` | `agentType`, `model`, `finished`, `description` | plan |
-| Lock | `.ctxm/ctxm.lock`: `version = 6`, `[[templates]]` with `name`, `source`, `commit` | read from a project's lock |
+| Lock | `.ctxm/ctxm.lock`: `version = 6` to `8`, `[[templates]]` with `name`, `source`, from 8 `version` (a pin to a release), `commit` | read from a project's lock |
 | Agent file | front matter `name`, `description`, `model`, `effort` | read from a project's agent file |
 
 Not checked, and written here as a choice: the value of `finished` (`true`; the plan says only that a running run

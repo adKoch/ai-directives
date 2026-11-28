@@ -45,6 +45,13 @@ def is_record_id: is_session_id;
 def is_project_name: matches("[A-Za-z0-9][A-Za-z0-9._-]{0,63}") and (is_fixed_word | not);
 def is_template_name: matches("[a-z0-9][a-z0-9-]{0,63}");
 def is_library_commit: matches("[0-9a-f]{40}([0-9a-f]{24})?");
+# Lock format 8, as ctxm checks it: a release names its full commit id, a commit pin may be abbreviated; either case.
+def is_released_commit: matches("[0-9a-fA-F]{40}");
+def is_pinned_commit: matches("[0-9a-fA-F]{4,40}");
+# A released version of a template: `x.y` or `x.y.z`, then an optional suffix of letters, digits and `-` in dotted
+# parts. It never holds `@`, the mark that separates it from the name and the commit in the fingerprint.
+def is_template_version:
+  matches("[0-9]{1,6}\\.[0-9]{1,6}(\\.[0-9]{1,6})?(-[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)*)?") and length <= 64;
 # A plan is a file of ctxm/plans/, its roll-up ctxm/metrics/<plan>.md: letters and digits in parts joined by one `.`,
 # `_` or `-`, so the name holds no `..`, no `/` and no leading dot.
 def is_plan_name: matches("[A-Za-z0-9]+([._-][A-Za-z0-9]+){0,15}") and length <= 64;
@@ -85,6 +92,11 @@ def field_text:
   else tostring | if is_field then . else error("a value that is no field of tasks.csv reached a line") end
   end;
 def csv_line: . as $line | [columns[] | $line[.] | field_text] | join(",");
+
+# Text a tool of the collector's said on its stderr, one line at a time, as text that is safe to print: it names the
+# project's paths, which a person chose, so every character but printable ASCII is written as `\u{<hex>}`.
+def hex_digits: if . < 16 then "0123456789abcdef"[.:. + 1] else (. / 16 | floor | hex_digits) + (. % 16 | hex_digits) end;
+def escaped_text: explode | map(if . >= 32 and . <= 126 then [.] | implode else "\\u{\(hex_digits)}" end) | join("");
 
 def by_column: [columns, .] | transpose | map({key: .[0], value: .[1]}) | from_entries;
 

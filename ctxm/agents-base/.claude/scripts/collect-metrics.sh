@@ -136,7 +136,7 @@ collect() {
 
 # Writes the added lines, their record and the roll-ups together, all or nothing (store.sh): every place is checked
 # and every file prepared before the first is renamed, and a stop before the last rename puts the old files back.
-# Whether the collector may write is checked only when there is something to write.
+# Whether the collector may write is checked only when the collection writes something (plan_writes_something).
 # tasks.csv is renamed last, just after its record: a kill that cuts the renames off (no trap runs) leaves it old,
 # and its record new: the old files the kill left stop every collection until a person moves them back (store.sh).
 store_collection() {
@@ -145,8 +145,7 @@ store_collection() {
   for ((index = 0; index < count; index++)); do
     refuse_unsafe_rollup "$(plan_part ".rollups[$index].plan" "$plan")"
   done
-  [[ "$(plan_part '(.rollups | length) > 0 or .counted != null' "$plan")" != true ]] || refuse_unwritable_store
-  remove_abandoned_files
+  ! plan_writes_something "$plan" || begin_write
   for ((index = 0; index < count; index++)); do
     name="$(plan_part ".rollups[$index].plan" "$plan")"
     prepare_file "$METRICS_FOLDER/$name.md" "$(plan_part ".rollups[$index].content" "$plan")"
@@ -156,6 +155,12 @@ store_collection() {
     prepare_file "$TASKS_FILE" "$(plan_part .content "$plan")"
   fi
   publish_prepared
+}
+
+# Succeeds when the collection writes something: a line, a record or a roll-up to prepare, or a file a killed
+# collector left to remove. Only such a collection needs a folder it may write in.
+plan_writes_something() {
+  [[ "$(plan_part '(.rollups | length) > 0 or .counted != null' "$1")" == true ]] || has_abandoned_files
 }
 
 # Prints the plan of the collection (lines.jq), from the facts of the project and of its transcripts, and what
