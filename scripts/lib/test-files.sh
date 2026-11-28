@@ -5,6 +5,7 @@
 
 readonly TEST_FILES=(
   scripts/lib/tests/check.test.sh
+  scripts/lib/tests/hidden-characters.test.sh
   scripts/lib/tests/test-files.test.sh
   tests/metrics/support/project.test.sh
   tests/metrics/support/testing.test.sh

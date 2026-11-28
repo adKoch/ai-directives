@@ -17,7 +17,7 @@ page says how it is built, how it is tested and how to extend it.
 7. `metrics/setup.jq` and `metrics/project.sh`: a commit's lock and agent files become a fingerprint.
 8. `metrics/rollup.jq` and `metrics/rollup_text.jq`, from the bottom up: lines, commits and plans become a roll-up
    and its text.
-9. `metrics/plans.sh`, `metrics/rollup_facts.jq`, `metrics/transcripts.sh`, `metrics/store.sh`, `metrics/tools.sh`,
+9. `metrics/plans.sh`, `metrics/rollup_facts.jq`, `metrics/transcripts.sh`, `metrics/store.sh`, `metrics/leftovers.sh`, `metrics/tools.sh`,
    `metrics/program.sh`, `metrics/telling.sh`: the edges.
 10. `collecting.sh`, then `runs.test.sh`: how a test is written; `copies.test.sh` for a case in both id orders;
     `../rollup/rolling.sh` and `figures.test.sh` for a roll-up.
