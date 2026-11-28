@@ -38,16 +38,26 @@ def is_model: matches("[A-Za-z0-9][A-Za-z0-9._:\\[\\]-]{0,79}") and (is_fixed_wo
 def is_effort: matches("[a-z][a-z0-9-]{0,19}") and (is_fixed_word | not);
 def is_session_id: matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
 def is_agent_id: matches("[0-9a-z]{1,64}") and (is_fixed_word | not);
-# An API call's id (its message id) and a compaction's id (its record's uuid). The record of what the lines counted
-# holds them (counted.jq), so each starts with a letter or a digit, as every field does.
+# An API call's id (its message id) and a compaction's id (its record's uuid, the shape of a session id). The record of
+# what the lines counted holds them (counted.jq), so each starts with a letter or a digit, as every field does.
 def is_call_id: matches("[A-Za-z0-9][A-Za-z0-9_-]{0,127}");
-def is_record_id: matches("[0-9a-f][0-9a-f-]{0,63}");
+def is_record_id: is_session_id;
 def is_project_name: matches("[A-Za-z0-9][A-Za-z0-9._-]{0,63}") and (is_fixed_word | not);
 def is_template_name: matches("[a-z0-9][a-z0-9-]{0,63}");
 def is_library_commit: matches("[0-9a-f]{40}([0-9a-f]{24})?");
 # A plan is a file of ctxm/plans/, its roll-up ctxm/metrics/<plan>.md: letters and digits in parts joined by one `.`,
 # `_` or `-`, so the name holds no `..`, no `/` and no leading dot.
 def is_plan_name: matches("[A-Za-z0-9]+([._-][A-Za-z0-9]+){0,15}") and length <= 64;
+
+# The files of ctxm/metrics/ the collector writes: the start record, tasks.csv, its record and a plan's roll-up.
+def is_own_file_name:
+  . == "start" or . == "tasks.csv" or . == "counted.csv" or (endswith(".md") and (.[:-3] | is_plan_name));
+
+# A second name the collector gives an own file while it writes it (store.sh), `<own file>.<kind>.<process id>`, of
+# the kind given (`new` or `old`); the process id as the system gives one, never 0.
+def is_leftover_name($kind):
+  (capture("\\A(?<file>.+)\\.(?<kind>[a-z]+)\\.(?<process>[1-9][0-9]{0,9})\\z") // null) as $parts
+  | $parts != null and $parts.kind == $kind and ($parts.file | is_own_file_name);
 
 # A time in ctxm/metrics/: UTC, to the second.
 def is_time:

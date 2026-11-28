@@ -99,4 +99,31 @@ test_items_that_no_other_column_has_are_each_listed_once() {
   assert_prints 3 grep --count '^### Item ' stdout
 }
 
+# catches: the items listed in the order of their names as text (REQ-900-10A before REQ-900-2A), while the columns read
+# numbers as numbers. The rule is run on its own: no plan of the fixtures has a run for such an item.
+test_items_are_listed_with_the_numbers_of_their_names_as_numbers() {
+  source "$REPO_ROOT/scripts/compare/program.sh"
+  # shellcheck disable=SC2016 # jq's own text
+  assert_prints '["REQ-900-2A-x","REQ-900-10A-x"]' comparison_jq "$COMPARISON_MODULES" \
+    '[{rollup: {items: [{item: "REQ-900-10A-x"}, {item: "REQ-900-2A-x"}]}}] | item_names' --null-input --compact-output
+}
+
+# catches: a file named like an old file a collection kept, but of no file the collector writes, taken for one (the
+# collector collects such a project, so the comparison must show it); and the collector's own kept file let through.
+test_only_an_old_file_of_the_collectors_own_files_stops_the_comparison() {
+  local name metrics=alpha/project/ctxm/metrics
+  rolled_up_project alpha one-setup
+  for name in notes.txt.old.4242 REQ-900.md.old.0 REQ-900.md.old.x4242 .REQ-900.md.old.4242 tasks.csv.new.4242; do
+    : >"$metrics/$name"
+  done
+  compared alpha/project
+  assert_prints '| runs | 5 |' figure_row 'Item REQ-900-1A-first-example' runs
+  assert_nothing_written
+  : >"$metrics/tasks.csv.old.4242"
+  : >"$metrics/counted.csv.old.4241"
+  compare alpha/project
+  assert_refused "$metrics/counted.csv.old.4241 is a file an interrupted collection kept, so the roll-ups may be a" \
+    "mix; settle it as docs/metrics-format.md (Files) says"
+}
+
 run_tests

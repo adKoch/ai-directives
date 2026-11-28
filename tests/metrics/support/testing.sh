@@ -19,16 +19,20 @@ readonly SUPPORT="$REPO_ROOT/tests/metrics/support" FIXTURES="$REPO_ROOT/tests/m
 # environment, so a test file that a test runs reports to nobody.
 readonly TEST_REPORT="${LIBRARY_TEST_REPORT:-}"
 unset LIBRARY_TEST_REPORT
+# What starts the line of a skipped test in its output (skip_test).
+readonly SKIPPED_MARK="skipped: "
 
 # Runs every `test_` function of the file that called it, prints one line per test (and a failed test's output),
-# reports how many ran, and ends the file with 1 when a test failed, or when the file has no test.
+# reports how many ran and how many of them were skipped, and ends the file with 1 when a test failed, or when the
+# file has no test.
 run_tests() {
   local name names
   mapfile -t names < <(declared_tests)
   ((${#names[@]} > 0)) || fail "$0 has no test_ function; no test was run"
-  make_ignored_cache_folder tests
+  make_cache_folder tests
   SCRATCH_ROOT="$(mktemp -d "$CACHE_DIR/tests/run.XXXXXX")"
   FAILED_TESTS=0
+  SKIPPED_TESTS=0
   trap 'rm -rf "$SCRATCH_ROOT"' EXIT
   trap 'exit 143' TERM
   for name in "${names[@]}"; do
@@ -46,10 +50,10 @@ declared_tests() {
   done < <(declare -F)
 }
 
-# Adds a failed test to FAILED_TESTS. The test is a command of its own, in no `||` or `if`, and so is every call on
-# the way to it: only so does errexit hold inside the test.
+# Adds a failed test to FAILED_TESTS, a skipped one to SKIPPED_TESTS. The test is a command of its own, in no `||` or
+# `if`, and so is every call on the way to it: only so does errexit hold inside the test.
 run_test() {
-  local name=$1 folder="$SCRATCH_ROOT/$1" status
+  local name=$1 folder="$SCRATCH_ROOT/$1" status outcome
   mkdir "$folder"
   set +e
   (
@@ -59,22 +63,52 @@ run_test() {
   ) >"$folder.output" 2>&1
   status=$?
   set -e
-  ((status == 0)) || FAILED_TESTS=$((FAILED_TESTS + 1))
-  print_test_result "$name" "$status" "$folder.output"
+  outcome="$(outcome_of "$status" "$folder.output")"
+  count_outcome "$outcome"
+  print_outcome "$name" "$outcome" "$folder.output"
 }
 
-print_test_result() {
-  local sentence="${1#test_}" status=$2 output=$3
-  if ((status == 0)); then
-    printf '  ok      %s\n' "${sentence//_/ }"
+# Prints how a test ended, from its status and its output: ok, skipped (skip_test) or FAILED.
+outcome_of() {
+  if (($1 != 0)); then
+    printf 'FAILED\n'
+  elif grep --quiet "^$SKIPPED_MARK" "$2"; then
+    printf 'skipped\n'
   else
-    printf '  FAILED  %s\n' "${sentence//_/ }"
-    cat "$output"
+    printf 'ok\n'
   fi
 }
 
+count_outcome() {
+  case "$1" in
+    FAILED) FAILED_TESTS=$((FAILED_TESTS + 1)) ;;
+    skipped) SKIPPED_TESTS=$((SKIPPED_TESTS + 1)) ;;
+  esac
+}
+
+# Prints the line of a test: ok, skipped with the reason skip_test gave, or FAILED with the test's output.
+print_outcome() {
+  local sentence="${1#test_}" outcome=$2 output=$3
+  case "$outcome" in
+    ok) printf '  ok      %s\n' "${sentence//_/ }" ;;
+    skipped) printf '  skipped %s: %s\n' "${sentence//_/ }" "$(sed -n "s/^$SKIPPED_MARK//p" "$output")" ;;
+    *)
+      printf '  FAILED  %s\n' "${sentence//_/ }"
+      cat "$output"
+      ;;
+  esac
+}
+
+# Reports to the test step how many tests ran and how many of them were skipped.
 report_tests_run() {
-  [[ -z "$TEST_REPORT" ]] || printf '%s\n' "$1" >"$TEST_REPORT"
+  [[ -z "$TEST_REPORT" ]] || printf '%s %s\n' "$1" "$SKIPPED_TESTS" >"$TEST_REPORT"
+}
+
+# Ends the test that calls it as passed, and has the run show it as skipped, with the reason: for a test that cannot
+# check what it is for where it runs.
+skip_test() {
+  printf '%s%s\n' "$SKIPPED_MARK" "$*"
+  exit 0
 }
 
 fail() {

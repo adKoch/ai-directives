@@ -60,6 +60,15 @@ compared() {
   assert_prints 0 cat status
 }
 
+# Fails unless the last comparison was refused with that line (given in parts, joined by spaces), printed nothing
+# on stdout and wrote nothing.
+assert_refused() {
+  assert_prints 1 cat status
+  assert_prints "error: $*" cat stderr
+  assert_prints '' cat stdout
+  assert_nothing_written
+}
+
 # Runs the comparison with stdout a pipe whose reader has gone: ./stderr and ./status as compare leaves them.
 compare_into_a_closed_pipe() {
   local status=0
@@ -91,7 +100,7 @@ note_what_was_there() {
   checkout_state >checkout-before
 }
 
-# Prints the row of the figure in the section under the heading (`Plan <plan>`, `Item <task>`, `Setups`) of what
+# Prints the row of the figure in the section under the heading (`Plans`, `Item <task>`, `Setups`) of what
 # the comparison printed.
 figure_row() {
   local heading=$1 figure=$2 line section=''
@@ -139,4 +148,10 @@ assert_nothing_written() {
   assert_prints "$before" files_state
   before="$(<checkout-before)"
   assert_prints "$before" checkout_state
+}
+
+# Skips the test that calls it (skip_test) when the tests run as root: root reads a file whatever its mode, so a test
+# that locks a file would check nothing.
+skip_when_run_as_root() {
+  ((EUID != 0)) || skip_test "run as root, which no file mode stops"
 }

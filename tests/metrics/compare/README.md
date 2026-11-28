@@ -11,7 +11,7 @@ refuses: `docs/compare-setups.md`. This page says how it is built, how it is tes
    the facts; `shown` is the one way a place from outside is printed.
 4. `scripts/compare/reading.jq`, from the bottom (`read_rollup`) up: a roll-up's text in, its numbers out, taken
    only when the collector's `rollup_text` writes the same bytes from them.
-5. `scripts/compare/comparison.jq`, from the bottom (`comparison`) up: facts in, setups and plans out.
+5. `scripts/compare/comparison.jq`, from the bottom (`comparison`) up: facts in, `{setups, columns, items}` out.
 6. `scripts/compare/figures.jq`: the figures shown, one line each. `scripts/compare/comparison_text.jq`: the text.
 7. `scripts/compare/program.sh`: how the collector's modules and these are joined.
 8. `comparing.sh`, then `side-by-side.test.sh`, `refusals.test.sh` and `output.test.sh`: how a test is written.
@@ -27,8 +27,8 @@ refuses: `docs/compare-setups.md`. This page says how it is built, how it is tes
 The flow: `find_rollups` checks every project folder and every `.md` file of its `ctxm/metrics/` and keeps the
 list; `rollup_facts` prints `{kind: "project", project, shown}` and `{kind: "rollup", project, file, shown, text}`;
 `comparison` takes them all (`--slurp`) and gives `{text}` or `{refusal}`. `read_rollup` reads each text back into
-the object `rollup_of` makes; `setups` groups the roll-ups by project and fingerprints; `columns` makes a column
-of each setup and plan, whatever the plans are named (in `plan_order`: `v0.9` before `v0.10`); `item_names`
+the object `rollup_of` makes; `setups` groups the roll-ups by project and fingerprints; `plan_columns` makes a column
+of each setup and plan, whatever the plans are named (in `natural_order`: `v0.9` before `v0.10`); `item_names`
 lists every task name of every column once, matched by name, `none` in a column without it.
 
 ## The test helpers (`comparing.sh`)

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # The library's minimal check, within a time budget: shellcheck on the library's scripts and tests and on the scripts
-# agents-base ships (lint; the rest of ctxm/ not yet, scripts/lib/steps/lint.sh), then every test file (test). It
-# checks its tools first and runs nothing without them: the caller's toolchain provides them (README.md, Tools).
+# agents-base ships, and no hidden character in any file or file name (lint; the rest of ctxm/ is not shellchecked
+# yet, scripts/lib/steps/lint.sh), then every test file (test). It checks its tools first and runs nothing without
+# them: the caller's toolchain provides them (README.md, Tools).
 # Usage: scripts/check.sh
 #   LIBRARY_BUDGET_SECONDS=<n> sets the budget in seconds (300 by default).
 # Prints one line per step (result, time, what it covered) and the total; a failed step's output follows on stderr
@@ -9,7 +10,7 @@
 # a budget stop).
 # shellcheck source=lib/common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
-require_tools bash jq shellcheck git timeout
+require_tools bash jq shellcheck git timeout sleep
 ensure_budget "$@"
 
 readonly LOG_DIR="$CACHE_DIR/check"
@@ -17,7 +18,7 @@ readonly STEPS=(lint test)
 
 main() {
   local step failed=0
-  make_ignored_cache_folder check
+  make_cache_folder check
   for step in "${STEPS[@]}"; do
     run_step "$step" || failed=$((failed + 1))
   done

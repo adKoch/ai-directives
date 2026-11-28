@@ -17,7 +17,7 @@ page says how it is built, how it is tested and how to extend it.
 7. `metrics/setup.jq` and `metrics/project.sh`: a commit's lock and agent files become a fingerprint.
 8. `metrics/rollup.jq` and `metrics/rollup_text.jq`, from the bottom up: lines, commits and plans become a roll-up
    and its text.
-9. `metrics/plans.sh`, `metrics/rollup_facts.jq`, `metrics/transcripts.sh`, `metrics/store.sh`, `metrics/tools.sh`,
+9. `metrics/plans.sh`, `metrics/rollup_facts.jq`, `metrics/transcripts.sh`, `metrics/store.sh`, `metrics/leftovers.sh`, `metrics/tools.sh`,
    `metrics/program.sh`, `metrics/telling.sh`: the edges.
 10. `collecting.sh`, then `runs.test.sh`: how a test is written; `copies.test.sh` for a case in both id orders;
     `../rollup/rolling.sh` and `figures.test.sh` for a roll-up.
@@ -58,8 +58,8 @@ reads the library's history.
 
 Test files: `runs.test.sh` (run lines), `sessions.test.sh` (main's lines, copies), `copies.test.sh` (copies,
 chains and deletions: each call once, in both id orders), `record.test.sh` (the record's refusals and its
-write), `start.test.sh` (the start), `refusals.test.sh` (what stops a collection), `text.test.sh` (no text gets
-out), `format.test.sh` (the page, the headers and an earlier header), `store.test.sh` (the collector's own working
+write), `empty-files.test.sh` (an empty `tasks.csv` or record, refused only beside a full one), `start.test.sh`
+(the start), `refusals.test.sh` (what stops a collection), `text.test.sh` (no text gets out), `format.test.sh` (the page, the headers and an earlier header), `store.test.sh` (the collector's own working
 files, its tools and its environment). The roll-up tests are in `../rollup/`: `figures.test.sh` (the
 figures), `refusals.test.sh` (what a roll-up refuses or leaves out) and `writing.test.sh` (roll-ups and lines all
 or nothing); `rolling.sh` adds plans and commits to a project and looks for its shapes and histories in its own
@@ -108,6 +108,8 @@ To read another format as well:
 3. Its text: a row or a bullet in `rollup_text.jq`. Every value passes `field_text`; a value that is not a number, a
    fixed word or a checked name stops the collection.
 4. A test in `../rollup/figures.test.sh` that compares the figure with the sum of the lines it names.
+5. The comparison reads the roll-up too, and refuses a roll-up whose figures it does not know: change it as
+   "Adding a figure" says (`../compare/README.md`).
 
 ## Adding a kind of event the record holds
 The record (`counted.csv`) holds every event of a main session's line, by kind and id, so that whether it was

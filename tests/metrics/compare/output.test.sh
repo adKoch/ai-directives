@@ -3,22 +3,14 @@
 # character a terminal or a reader would not show as it is. Each ends with 0 or 1 and at most one line on stderr.
 # shellcheck source=comparing.sh
 source "$(dirname "${BASH_SOURCE[0]}")/comparing.sh"
+# shellcheck source=../../../scripts/lib/hidden-characters.sh
+source "$REPO_ROOT/scripts/lib/hidden-characters.sh"
 
 # What the comparison calls, but jq; sleep is the budget's (scripts/lib/budget.sh).
 readonly TOOLS_BUT_JQ=(bash dirname basename wc timeout sleep)
 readonly RULES_FAILED='the rules of the comparison (scripts/compare/ and those of the collector, run by jq) failed,'\
 ' so nothing is shown; check that this library checkout is whole and that jq is the version README.md (Tools) names'
-readonly NOT_WRITTEN="the comparison could not be written to stdout; give it a place to write that takes the whole text"
-
-# Prints the comparison's files, its docs page and its tests that hold a byte that is no printable ASCII, a tab or a
-# line end: a character that turns text around, a control character or one that looks like another.
-files_with_hidden_characters() {
-  local LC_ALL=C file
-  for file in "$REPO_ROOT"/scripts/compare-setups.sh "$REPO_ROOT"/scripts/compare/* \
-    "$REPO_ROOT"/docs/compare-setups.md "$REPO_ROOT"/tests/metrics/compare/*; do
-    [[ "$(<"$file")" != *[!$'\t\n'\ -~]* ]] || printf '%s\n' "${file#"$REPO_ROOT"/}"
-  done
-}
+readonly NOT_WRITTEN="the text could not be written to stdout; give it a place to write that takes the whole text"
 
 # catches: a comparison into a pipe nobody reads that ends with an error or a broken-pipe line.
 test_a_comparison_into_a_closed_pipe_ends_quietly() {
@@ -59,7 +51,20 @@ test_a_jq_that_fails_ends_the_comparison_with_one_line() {
 # catches: a hidden character (a right-to-left override, a control character) in the comparison's own files, where
 # a reviewer cannot see it.
 test_the_comparisons_files_hold_only_printable_ascii() {
-  assert_prints '' files_with_hidden_characters
+  local files
+  shopt -s dotglob nullglob
+  files=("$REPO_ROOT"/scripts/compare-setups.sh "$REPO_ROOT"/scripts/compare/* "$REPO_ROOT"/docs/compare-setups.md
+    "$REPO_ROOT"/tests/metrics/compare/*)
+  assert_prints '' files_outside_printable_ascii "${files[@]}"
+}
+
+# catches: a misnamed rule module reported as a failure of the rules, hiding the line that names it.
+test_a_misnamed_rule_module_is_named_in_the_line() {
+  local status=0
+  bash -c 'source "$1/scripts/lib/common.sh"; source "$1/scripts/compare/program.sh"; comparison_jq nowhere/reading . --null-input' \
+    _ "$REPO_ROOT" >stdout 2>stderr || status=$?
+  assert_equal "$status" 1
+  assert_prints 'error: no rule module nowhere/reading: name it collector/<name> or compare/<name>' cat stderr
 }
 
 run_tests

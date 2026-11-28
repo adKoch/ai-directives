@@ -5,10 +5,12 @@
 
 readonly TEST_FILES=(
   scripts/lib/tests/check.test.sh
+  scripts/lib/tests/hidden-characters.test.sh
   scripts/lib/tests/test-files.test.sh
   tests/metrics/support/project.test.sh
   tests/metrics/support/testing.test.sh
   tests/metrics/collector/copies.test.sh
+  tests/metrics/collector/empty-files.test.sh
   tests/metrics/collector/format.test.sh
   tests/metrics/collector/record.test.sh
   tests/metrics/collector/refusals.test.sh

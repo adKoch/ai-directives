@@ -32,4 +32,21 @@ result_lines() {
   jq -R -s -c '[splits("\n") | select(test("^  (ok|FAILED)  "))]' "$1"
 }
 
+# catches: a skipped test shown as passed, and counted as one in the test step's summary, so a run where a test could
+# not check what it is for looks the same as one where it did.
+test_a_skipped_test_is_shown_and_reported_as_skipped() {
+  local status=0
+  cat >skipping.test.sh <<TEST_FILE
+source "$SUPPORT/testing.sh"
+test_a_test_that_cannot_run_here() { skip_test "synthetic reason"; false; }
+test_a_test_that_runs() { true; }
+run_tests
+TEST_FILE
+  LIBRARY_TEST_REPORT="$PWD/report" bash skipping.test.sh >output 2>&1 || status=$?
+  assert_equal "$status" 0
+  assert_prints '  skipped a test that cannot run here: synthetic reason
+  ok      a test that runs' cat output
+  assert_prints '2 1' cat report
+}
+
 run_tests

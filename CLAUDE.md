@@ -9,41 +9,10 @@
 
 ## Development Environment
 
-- Use Taskfile as main interaction method - no random script running
-- All packages and dependencies via Nix
-- Only Taskfile and Nix should be installed on computer
-
-### Nix Best Practices
-
-- Use `nix develop` instead of `nix-shell` with flakes
-- Define project environments in `flake.nix` with `devShells`
-- Use `direnv` with `.envrc` containing `use flake` for automatic environment loading
-- Lock dependencies with `flake.lock` for reproducibility
-- Keep same nixpkgs revision across projects to avoid multiple downloads
-
-Example `flake.nix`:
-
-```nix
-{
-  description = "Development environment";
-  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-  outputs = { self, nixpkgs }: let
-    system = "x86_64-linux";
-    pkgs = nixpkgs.legacyPackages.${system};
-  in {
-    devShells.${system}.default = pkgs.mkShell {
-      buildInputs = with pkgs; [ nodejs_20 python3 postgresql ];
-      shellHook = ''echo "🚀 Dev environment loaded"'';
-    };
-  };
-}
-```
-
-Example `.envrc`:
-
-```bash
-use flake
-```
+- This library has no flake and ships no toolchain: its scripts use the tools of the caller's own toolchain, on the `PATH` (`README.md`, Tools)
+- Use the scripts in `scripts/` as the entry points, never ad-hoc commands: `scripts/check.sh` is the check, `scripts/compare-setups.sh` the comparison
+- A repeatable step is a script; each script checks its tools first and runs within a time budget
+- A project that applies these templates keeps its own toolchain pinned (for example a Nix flake with `nix develop`) and runs the library's scripts inside it
 
 ## Clean Code Principles
 
